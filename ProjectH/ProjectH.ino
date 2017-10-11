@@ -1,4 +1,5 @@
-#include "ArduinoOTA.h" //...
+#include <EEPROM.h>
+#include "ArduinoOTA.h"
 
 /*
 
@@ -12,20 +13,21 @@
 
 #include <Servo.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>  //...
+#include <ESP8266mDNS.h>
 #include <WiFiClient.h>
-#include <WiFiUdp.h>      //...
-#include <elapsedMillis.h>  //...
+#include <WiFiUdp.h>
+#include <elapsedMillis.h>
 #include "WEMOS_Motor.h"
 #include "SSD1306.h"
 
 #ifndef _WEMOS_MOTOR_DELAY_REMOVED
-This is here to make sure WEMOS_Motor.cpp has the delays removed from the functions.
-If you see this, add the above define and remove the delay calls.
+#error "If you see this, add the above define and remove the delay calls."
+#error "This is here to make sure WEMOS_Motor.cpp has the delays removed from the functions."
 #endif
 
 #ifndef _OTA_DELAY_REMOVED
-//If you see this, add the above define and remove the delay calls.
+#error "If you see this, add the above define and remove the delay calls."
+#error "This is here to make sure ArduinoOTA.cpp has the delays removed from the functions."
 #endif
 
 IPAddress ipClient(192, 168, 1, 205);
@@ -42,7 +44,7 @@ const char *ota_hostname = "ProjectH";
 
 const uint64_t LOADING_CIRCLE_TIME = 1000;
 const uint64_t CHECKMARK_TIME = 1000;
-const uint64_t HEARTBEAT_TIME = 1000;
+const uint64_t HEARTBEAT_TIME = 900;
 
 const float LOADING_CIRCLE_CONST = (LOADING_CIRCLE_TIME / 8000.0);
 const float CHECKMARK_CONST = (CHECKMARK_TIME / 8000.0);
@@ -55,16 +57,27 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   Ending with one byte #10 - Also know as <lf> or /n or char #10 (These are the same. ).
 */
 
-#define Heartbeat 3
-#define MotorControl 5
-#define ServoESCControl 6
-#define QueryPins 20
+#define START_TOKEN "AUSTIN_TIM"
+#define SERIES_TOKEN "PROJECTH"
+#define PROJECT_TOKEN "REMOTECAR"
 
-#define HeartbeatTimeout 3000     // 3 seconds of nothing will stop the motors
+#define HEARTBEAT_FUNCTION 3
+#define MOTOR_FUNCTION 5
+#define SERVO_FUNCTION 6
+//#define QueryPins 20
+
+#define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
 
 /*
+  ------------------------------------
+  For Heartbeat
+  The Android will send Heartbeat only
+  Example
+  999,3
+  999,3
+  999,3
   ---------------------
-  For MotorControl
+  For MOTOR_FUNCTION
   The Android will send MotorControl + 3 additional numbers
   Function, Motor#(1-20), Mode/Direction(0-3), Speed(0-100)
   // Not that a direction of 1 with speed of 0 will allow the motor to coast
@@ -92,10 +105,8 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   _CCW      1
   _CW         2
   _STOP     3
-
-
   ----------------------------
-  For ServoESCControl - Normally the weapon
+  For SERVO_FUNCTION - Normally the weapon
   The Android will send ServoESCControl + 2 additional numbers
   Function, Servo/ESC#(1-20), Speed(0-100)
   speed is a number 0 -> 100 that represents percentage of
@@ -106,15 +117,6 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 
   999,6,1,100  // Weapon on the ESC running 100%
   999,6,1,0    // Turn off the weapon
-
-  ------------------------------------
-  For Heartbeat
-  The Android will send Heartbeat only
-  Example
-  999,3
-  999,3
-  999,3
-
   ------------------------------------
   For QueryPins
  **** This is not implemented yet
@@ -186,7 +188,7 @@ void setup() {
   Serial.begin(250000);   // if not using the Pro Micro then use this and change every reference to Serial below to Serial
   delay(250);
 
-  EEPROM.read(0);
+  
 
   M1.setmotor(_STOP);
   M2.setmotor(_STOP);
@@ -211,15 +213,15 @@ void setup() {
     WiFi.begin(ssid, password);
   */
 
-  //  WiFi.mode(WIFI_AP);
+  //WiFi.mode(WIFI_AP);
   WiFi.mode(WIFI_AP_STA);   // New addition for OTA
   WiFi.hostname(ota_hostname);
-  //  WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
+  //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
   WiFi.softAP(ssid, password);
 
   IPAddress myIP = WiFi.softAPIP();
 
-  Serial.print("1 AP IP address: ");
+  Serial.print("AP IP address: ");
   Serial.println(myIP);
 
   // start the server listening
@@ -288,33 +290,47 @@ void setup() {
   client = server.available();
 }
 
-String sGetToken(String &InStr) {
-  int P = InStr.indexOf(',');
-  if (P >= 0) {
-    String S = InStr.substring(0, P);
-    InStr.remove(0, P + 1);
-    return S;
+String getStartToken() {
+  String token;
+  uint8_t i = 0;
+  char temp;
+  while(true) {
+    temp = EEPROM.read(i++);
+    if(!temp) break;
+    token += temp;
   }
-  else
-  {
-    String S = InStr;
-    InStr = "";
-    return S;
-  }
+  return token;
 }
 
-int iGetToken(String &InStr) {
-  return sGetToken(InStr).toInt();
+void writeStartToken() {
+  for(uint8_t i = 0; i < sizeof(START_TOKEN); i++) writeEEPROM(i, START_TOKEN[i]);
 }
 
-void ProcessCommand(String sCommand) {
+void writeEEPROM(uint16_t i, uint8_t data) {
+  if(EEPROM.read(i) != data) EEPROM.write(i, data);
+}
+
+int getNextToken(String &inStr) {
+  int index = inStr.indexOf(',');
+  String token;
+  if (index >= 0) {
+    token = inStr.substring(0, index);
+    inStr.remove(0, index + 1);
+  } else {
+    token = inStr;
+    inStr = "";
+  }
+  return token.toInt();
+}
+
+void processCommand(String sCommand) {
   int motorNum;
   int motorDirection;
   int motorPower;
   int servoNum;
   int servoPosition;
 
-  int Starting999 = iGetToken(sCommand);
+  int Starting999 = getNextToken(sCommand);
 
   if (Starting999 != 999) {    // Be sure the input starts with 999
     //    Serial.print("Didn't find 999 Purge line. Found: ");
@@ -323,19 +339,19 @@ void ProcessCommand(String sCommand) {
   }
 
   //Serial.print("Found 999. ");
-  int functionNumber = iGetToken(sCommand);
+  int functionNumber = getNextToken(sCommand);
   //Serial.print("functionNumber: ");
   //Serial.println(functionNumber);
 
-  if (functionNumber == Heartbeat) {
+  if (functionNumber == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
     HeartbeatTimeoutCNT = 0;
   }
 
-  if (functionNumber == MotorControl) {
-    motorNum = iGetToken(sCommand);
-    motorDirection = iGetToken(sCommand);
-    motorPower = iGetToken(sCommand);
+  if (functionNumber == MOTOR_FUNCTION) {
+    motorNum = getNextToken(sCommand);
+    motorDirection = getNextToken(sCommand);
+    motorPower = getNextToken(sCommand);
 
     if (motorNum == 1) {
       //Serial.println("Received command for Motor Number 1");
@@ -351,9 +367,9 @@ void ProcessCommand(String sCommand) {
     }
   }
 
-  if (functionNumber == ServoESCControl) {
-    servoNum = iGetToken(sCommand);
-    servoPosition = iGetToken(sCommand);
+  if (functionNumber == SERVO_FUNCTION) {
+    servoNum = getNextToken(sCommand);
+    servoPosition = getNextToken(sCommand);
 
     if (servoNum == 1) {
       if (S1Position = servoPosition) {
@@ -375,15 +391,11 @@ void ProcessCommand(String sCommand) {
 
 }
 
-int ReadClientRetEOFPos() {
-
+int readClientRetEOFPos() {
   //  loop to read multiple
-  while (client.available() > 0) {
+  while(client.available() > 0) {
     char c = client.read();
-    if (c > 0)
-      sClientIn += c;
-    else
-      break;
+    if(c > 0) sClientIn += c; else break;
   }
 
   int EOFPos = sClientIn.indexOf(char(10));
@@ -392,9 +404,9 @@ int ReadClientRetEOFPos() {
   return -1; // if nothing
 }
 
-void CheckHeartbeatTimeout() {
+void checkHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
-  if ((lastHeartbeat > HeartbeatTimeout)) {// && (HeartbeatTimeoutCNT < 3)) {
+  if ((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
     Serial.print("Heartbeat Lost. Motor shutdown");
     HeartbeatTimeoutCNT++;
     M1dir = 1;
@@ -416,7 +428,7 @@ void CheckHeartbeatTimeout() {
   }
 }
 
-void CheckLEDBlinkTimeout() {
+void checkLEDBlinkTimeout() {
   if (millis() > NextLEDBlinkTime) {
     NextLEDBlinkTime = millis() + NextLEDBlinkTimeout;
     LED_On_Off = !LED_On_Off;
@@ -426,11 +438,12 @@ void CheckLEDBlinkTimeout() {
 
 void loop() {
   ArduinoOTA.handle();
+  yield();
   String sCommand = "";
 
-  CheckHeartbeatTimeout();
+  checkHeartbeatTimeout();
 
-  CheckLEDBlinkTimeout();
+  checkLEDBlinkTimeout();
 
   //Serial.println("M1Changed-Send to motor");
   motorDrive(1, M1dir, M1Speed);
@@ -451,12 +464,12 @@ void loop() {
       ClientConnected = true;
       connecting = false;
       disconnected = false;
-      int EOFPos = ReadClientRetEOFPos();
+      int EOFPos = readClientRetEOFPos();
 
       if (EOFPos > 0) {   // Check that we have something to process
         sCommand = sClientIn.substring(0, EOFPos);
         sClientIn.remove(0, EOFPos + 1);
-        ProcessCommand(sCommand);
+        processCommand(sCommand);
       }
     } else {
       ClientConnected = false;
@@ -488,9 +501,9 @@ void loop() {
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
   int M1pixels = (M1Speed / 4.16);
-  display.drawRect(getX(62), getY((M1dir == 1)?(24 - M1pixels):(24)),2 , M1pixels);
+  display.drawRect(getDisplayX(62), getDisplayY((M1dir == 1)?(24 - M1pixels):(24)),2 , M1pixels);
   int M2pixels = (M2Speed / 4.16);
-  display.drawRect(getX(0), getY((M2dir == 2)?(24 - M2pixels):(24)),2 , M2pixels);
+  display.drawRect(getDisplayX(0), getDisplayY((M2dir == 2)?(24 - M2pixels):(24)),2 , M2pixels);
   display.display();
 }
 
@@ -563,9 +576,9 @@ void motorDrive(int motorNum, int motorDir, int percent) {
   }
 }
 
-void printWiFiStatus() {
+//void printWiFiStatus() {
   // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.softAPIP();
+  //IPAddress ip = WiFi.softAPIP();
   //Serial.print("2 softAP IP Address: ");
   //Serial.println(ip);
 
@@ -575,24 +588,24 @@ void printWiFiStatus() {
 
   //  display.display();
 
-}
+//}
 
-uint16_t getX(uint16_t x) {
+uint16_t getDisplayX(uint16_t x) {
   return x + 32;
 }
 
-uint16_t getY(uint16_t y) {
+uint16_t getDisplayY(uint16_t y) {
   return y + 16;
 }
 
 /*
 void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t percent) {
   uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
-  display.drawVerticalLine(getX(x), getY(y), height - barHeight);
-  display.drawVerticalLine(getX(x) + width - 1, getY(y), height - barHeight);
-  display.drawHorizontalLine(getX(x) + 1, getY(y), width - 2);
+  display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
+  display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
+  display.drawHorizontalLine(getDisplayX(x) + 1, getDisplayY(y), width - 2);
   if (percent > 100) percent = 100;
-  display.fillRect(getX(x), getY(y) + height - barHeight, width, barHeight);
+  display.fillRect(getDisplayX(x), getDisplayY(y) + height - barHeight, width, barHeight);
 }
 */
 
@@ -631,12 +644,12 @@ void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
   temp = (temp / ((exp(.5 / CHECKMARK_CONST) * 2) - 1)) * 2 * size;
   if (temp < size) {
     for (uint16_t i = 0; i < thickness; i++) {
-      display.drawLine(getX(x) - (size / 2) - (i / 2), getY(y) - (size / 2) + ((i + 1) / 2), getX(x) - ((size - temp) / 2), getY(y) - ((size - temp) / 2) + i);
+      display.drawLine(getDisplayX(x) - (size / 2) - (i / 2), getDisplayY(y) - (size / 2) + ((i + 1) / 2), getDisplayX(x) - ((size - temp) / 2), getDisplayY(y) - ((size - temp) / 2) + i);
     }
   } else {
     for (uint16_t i = 0; i < thickness; i++) {
-      display.drawLine(getX(x) - (size / 2) - (i / 2), getY(y) - (size / 2) + ((i + 1) / 2), getX(x), getY(y) + i);
-      display.drawLine(getX(x) - (size - temp) + 1 + (i / 2), getY(y) + (size - temp) + ((i + 1) / 2), getX(x), getY(y) + i);
+      display.drawLine(getDisplayX(x) - (size / 2) - (i / 2), getDisplayY(y) - (size / 2) + ((i + 1) / 2), getDisplayX(x), getDisplayY(y) + i);
+      display.drawLine(getDisplayX(x) - (size - temp) + 1 + (i / 2), getDisplayY(y) + (size - temp) + ((i + 1) / 2), getDisplayX(x), getDisplayY(y) + i);
     }
   }
 }
@@ -650,7 +663,7 @@ void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint
   if (phase > phaseNum) phase = phaseNum;
   if (phase >= width) phase = -phase + (width * 2) - 2;
   for (uint16_t i = 0; i < width; i++) {
-    if (i > phase || i < phase - (dotSize - 1)) display.drawVerticalLine(getX(x) + i, getY(y), height);
+    if (i > phase || i < phase - (dotSize - 1)) display.drawVerticalLine(getDisplayX(x) + i, getDisplayY(y), height);
   }
 }
 
@@ -667,11 +680,11 @@ void drawArc(uint16_t x, uint16_t y, float radius, float startTheta, float endTh
   float dy = sin(startTheta) * radius;
   float ctheta = cos(endTheta / (N - 1));
   float stheta = sin(endTheta / (N - 1));
-  display.fillRect(getX(x) + dx, getY(y) + dy, thickness, thickness);
+  display.fillRect(getDisplayX(x) + dx, getDisplayY(y) + dy, thickness, thickness);
   for (uint16_t i = 1; i < N; i++) {
     float dxtemp = (ctheta * dx) - (stheta * dy);
     float dytemp = (stheta * dx) + (ctheta * dy);
-    display.fillRect(getX(x) + dx, getY(y) + dy, thickness, thickness);
+    display.fillRect(getDisplayX(x) + dx, getDisplayY(y) + dy, thickness, thickness);
     dx = dxtemp;
     dy = dytemp;
   }
