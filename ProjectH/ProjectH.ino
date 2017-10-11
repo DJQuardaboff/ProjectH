@@ -186,6 +186,8 @@ void setup() {
   Serial.begin(250000);   // if not using the Pro Micro then use this and change every reference to Serial below to Serial
   delay(250);
 
+  EEPROM.read(0);
+
   M1.setmotor(_STOP);
   M2.setmotor(_STOP);
   //  motorDrive(1, 1, 50);
@@ -284,7 +286,7 @@ void setup() {
   //printWiFiStatus();
 
   client = server.available();
-};
+}
 
 String sGetToken(String &InStr) {
   int P = InStr.indexOf(',');
@@ -299,11 +301,11 @@ String sGetToken(String &InStr) {
     InStr = "";
     return S;
   }
-};
+}
 
 int iGetToken(String &InStr) {
   return sGetToken(InStr).toInt();
-};
+}
 
 void ProcessCommand(String sCommand) {
   int motorNum;
@@ -318,7 +320,7 @@ void ProcessCommand(String sCommand) {
     //    Serial.print("Didn't find 999 Purge line. Found: ");
     //    Serial.println(Starting999);
     return;
-  };
+  }
 
   //Serial.print("Found 999. ");
   int functionNumber = iGetToken(sCommand);
@@ -328,7 +330,7 @@ void ProcessCommand(String sCommand) {
   if (functionNumber == Heartbeat) {
     lastHeartbeat = 0;
     HeartbeatTimeoutCNT = 0;
-  };
+  }
 
   if (functionNumber == MotorControl) {
     motorNum = iGetToken(sCommand);
@@ -382,13 +384,13 @@ int ReadClientRetEOFPos() {
       sClientIn += c;
     else
       break;
-  };
+  }
 
   int EOFPos = sClientIn.indexOf(char(10));
   return EOFPos;
 
   return -1; // if nothing
-};
+}
 
 void CheckHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
