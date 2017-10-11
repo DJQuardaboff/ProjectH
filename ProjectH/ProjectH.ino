@@ -243,8 +243,6 @@ void setup() {
   });
 
   ArduinoOTA.onEnd([]() {
-    //    drawBatteryBar(0, 0, 8, 48, (millis() / 20) % 100);
-    //    display.display();
     Serial.println("\nEnd");
   });
 
@@ -304,6 +302,7 @@ String getStartToken() {
 
 void writeStartToken() {
   for(uint8_t i = 0; i < sizeof(START_TOKEN); i++) writeEEPROM(i, START_TOKEN[i]);
+  writeEEPROM(sizeof(START_TOKEN), 0);
 }
 
 void writeEEPROM(uint16_t i, uint8_t data) {
@@ -323,43 +322,35 @@ int getNextToken(String &inStr) {
   return token.toInt();
 }
 
-void processCommand(String sCommand) {
+void processCommand(String command) {
   int motorNum;
   int motorDirection;
   int motorPower;
   int servoNum;
   int servoPosition;
 
-  int Starting999 = getNextToken(sCommand);
+  if(getNextToken(command) != 999) return; // Be sure the input starts with 999
 
-  if (Starting999 != 999) {    // Be sure the input starts with 999
-    //    Serial.print("Didn't find 999 Purge line. Found: ");
-    //    Serial.println(Starting999);
-    return;
-  }
-
-  //Serial.print("Found 999. ");
-  int functionNumber = getNextToken(sCommand);
+  int function = getNextToken(command);
   //Serial.print("functionNumber: ");
-  //Serial.println(functionNumber);
+  //Serial.println(function);
 
-  if (functionNumber == HEARTBEAT_FUNCTION) {
+  if(function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
     HeartbeatTimeoutCNT = 0;
   }
 
-  if (functionNumber == MOTOR_FUNCTION) {
-    motorNum = getNextToken(sCommand);
-    motorDirection = getNextToken(sCommand);
-    motorPower = getNextToken(sCommand);
+  if(function == MOTOR_FUNCTION) {
+    motorNum = getNextToken(command);
+    motorDirection = getNextToken(command);
+    motorPower = getNextToken(command);
 
-    if (motorNum == 1) {
+    if(motorNum == 1) {
       //Serial.println("Received command for Motor Number 1");
       M1Changed = true;
       M1dir = motorDirection;
       M1Speed = motorPower;
-    }
-    else if (motorNum == 2) {
+    } else if (motorNum == 2) {
       //Serial.println("Received command for Motor Number 2");
       M2Changed = true;
       M2dir = motorDirection;
@@ -367,25 +358,25 @@ void processCommand(String sCommand) {
     }
   }
 
-  if (functionNumber == SERVO_FUNCTION) {
-    servoNum = getNextToken(sCommand);
-    servoPosition = getNextToken(sCommand);
+  if(function == SERVO_FUNCTION) {
+    servoNum = getNextToken(command);
+    servoPosition = getNextToken(command);
 
-    if (servoNum == 1) {
-      if (S1Position = servoPosition) {
+    if(servoNum == 1) {
+      if(S1Position = servoPosition) {
         S1Changed = true;
         S1Position = servoPosition;
       }
-    } else if (servoNum == 2) {
+    } else if(servoNum == 2) {
       if (S2Position = servoPosition) {
         S2Changed = true;
         S2Position = servoPosition;
       }
-    } else if (servoNum == 3) {
-      if (S3Position = servoPosition) {
+    } else if(servoNum == 3) {
+      if(S3Position = servoPosition) {
         S3Changed = true;
         S3Position = servoPosition;
-      };
+      }
     }
   }
 
@@ -406,7 +397,7 @@ int readClientRetEOFPos() {
 
 void checkHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
-  if ((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
+  if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
     Serial.print("Heartbeat Lost. Motor shutdown");
     HeartbeatTimeoutCNT++;
     M1dir = 1;
@@ -429,7 +420,7 @@ void checkHeartbeatTimeout() {
 }
 
 void checkLEDBlinkTimeout() {
-  if (millis() > NextLEDBlinkTime) {
+  if(millis() > NextLEDBlinkTime) {
     NextLEDBlinkTime = millis() + NextLEDBlinkTimeout;
     LED_On_Off = !LED_On_Off;
     digitalWrite(LED_BUILTIN, LED_On_Off);
@@ -439,7 +430,7 @@ void checkLEDBlinkTimeout() {
 void loop() {
   ArduinoOTA.handle();
   yield();
-  String sCommand = "";
+  String command = "";
 
   checkHeartbeatTimeout();
 
@@ -454,22 +445,22 @@ void loop() {
   motorDrive(2, M2dir, M2Speed);
   M2Changed = false;
 
-  if (S1Changed) {
+  if(S1Changed) {
     myservo.write(S1Position);
     S1Changed = false;
   }
 
-  if (client) {
-    if (client.connected()) {
+  if(client) {
+    if(client.connected()) {
       ClientConnected = true;
       connecting = false;
       disconnected = false;
       int EOFPos = readClientRetEOFPos();
 
-      if (EOFPos > 0) {   // Check that we have something to process
-        sCommand = sClientIn.substring(0, EOFPos);
+      if(EOFPos > 0) {   // Check that we have something to process
+        command = sClientIn.substring(0, EOFPos);
         sClientIn.remove(0, EOFPos + 1);
-        processCommand(sCommand);
+        processCommand(command);
       }
     } else {
       ClientConnected = false;
@@ -486,17 +477,14 @@ void loop() {
     connecting = true;
     disconnected = false;
     client = server.available();
-    if (client) {
+    if(client) {
       ClientConnected = true;
       connecting = false;
-      //      Serial.println("new client");
       sClientIn = "";   // a string to hold incoming data
     }
   }
 
   display.clear();
-//  drawBatteryBar(3, 0, 4, 48, (1.0 - (WiFi.RSSI(0) / -100.0)) * 50);
-//  Serial.println(WiFi.RSSI(0));
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
@@ -507,18 +495,15 @@ void loop() {
   display.display();
 }
 
-void WeaponDrive(int ServoNum, int percent) {
-  if (ServoNum <= 0)
-    exit;
-  int Escduty = map(percent, 0, 100, 50, 179);
-  if (percent == 0)
-    Escduty = 50;
-  else
-    Escduty = 165;
+void WeaponDrive(int servoNum, uint8_t percent) {
+  if(servoNum <= 0) return;
+  if(percent > 100) percent = 100;
+  int escDuty = map(percent, 0, 100, 50, 179);
+  if(percent == 0) escDuty = 50; else escDuty = 165;
 
-  //  myservo.write(Escduty);
-  //  myservo.attach(SERVOESC_PIN);
-  // myservo.write(Escduty);
+  //myservo.write(Escduty);
+  //myservo.attach(SERVOESC_PIN);
+  //myservo.write(Escduty);
 
   /*
     delay(200);
@@ -600,11 +585,11 @@ uint16_t getDisplayY(uint16_t y) {
 
 /*
 void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t percent) {
+  if (percent > 100) percent = 100;
   uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
   display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
   display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
   display.drawHorizontalLine(getDisplayX(x) + 1, getDisplayY(y), width - 2);
-  if (percent > 100) percent = 100;
   display.fillRect(getDisplayX(x), getDisplayY(y) + height - barHeight, width, barHeight);
 }
 */
