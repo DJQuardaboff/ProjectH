@@ -227,7 +227,7 @@ void setup() {
   WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
   WiFi.softAP(ssid, password);
-
+  
   // start the server listening
   server.begin();
   // you're connected now, so print out the status:
@@ -286,8 +286,6 @@ void setup() {
   display.init();
   display.flipScreenVertically();
   display.clear();
-
-  //printWiFiStatus();
 
   client = server.available();
 }
