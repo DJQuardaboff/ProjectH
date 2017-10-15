@@ -40,6 +40,9 @@ IPAddress subnet(255, 255, 255, 0);
 const char *ssid = "ProjectH002";
 const char *password = "projecth";
 
+const char *updater_ssid = "TimAustinUpdater";
+const char *updater_password = "ProjectH";
+
 const char *ota_hostname = "ProjectH";
 
 const uint64_t LOADING_CIRCLE_TIME = 1000;
@@ -57,8 +60,11 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   Ending with one byte #10 - Also know as <lf> or /n or char #10 (These are the same. ).
 */
 
+#define START_TOKEN_ADDR 0x000
 #define START_TOKEN "AUSTIN_TIM"
+#define SERIES_TOKEN_ADDR 0x010
 #define SERIES_TOKEN "PROJECTH"
+#define PROJECT_TOKEN_ADDR 0x020
 #define PROJECT_TOKEN "REMOTECAR"
 
 #define HEARTBEAT_FUNCTION 3
@@ -213,16 +219,14 @@ void setup() {
     WiFi.begin(ssid, password);
   */
 
-  //WiFi.mode(WIFI_AP);
-  WiFi.mode(WIFI_AP_STA);   // New addition for OTA
+  while(!Serial);
+
+  WiFi.begin(updater_ssid, updater_password);
+  WiFi.mode(WIFI_STA);
+  //WiFi.mode(WIFI_AP_STA);   // New addition for OTA
   WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
   WiFi.softAP(ssid, password);
-
-  IPAddress myIP = WiFi.softAPIP();
-
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
 
   // start the server listening
   server.begin();
@@ -248,7 +252,7 @@ void setup() {
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     display.clear();
-    display.drawProgressBar(32, 40, 64, 10, (progress / (total / 100)));
+    display.drawProgressBar(31, 40, 64, 10, (progress / (total / 100)));
 
     display.display();
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -267,9 +271,9 @@ void setup() {
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-
-  myIP = WiFi.softAPIP();
-  Serial.print("2 AP IP address: ");
+  
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
   Serial.println(myIP);
 
   /*
@@ -288,38 +292,37 @@ void setup() {
   client = server.available();
 }
 
-String getStartToken() {
-  String token;
-  uint8_t i = 0;
+String readEEPROMToken(uint16_t addr) {
+  String str;
   char temp;
   while(true) {
-    temp = EEPROM.read(i++);
+    temp = EEPROM.read(addr++);
     if(!temp) break;
-    token += temp;
+    str += temp;
+  }
+  return str;
+}
+
+void writeEEPROMToken(uint16_t addr, String str) {
+  for(uint8_t i = addr; i < sizeof(str); i++) EEPROM.write(i, str[i]);
+  EEPROM.write(addr + sizeof(str), 0x00);
+}
+
+String sGetToken(String &str) {
+  int index = str.indexOf(',');
+  String token;
+  if (index >= 0) {
+    token = str.substring(0, index);
+    str.remove(0, index + 1);
+  } else {
+    token = str;
+    str = "";
   }
   return token;
 }
 
-void writeStartToken() {
-  for(uint8_t i = 0; i < sizeof(START_TOKEN); i++) writeEEPROM(i, START_TOKEN[i]);
-  writeEEPROM(sizeof(START_TOKEN), 0);
-}
-
-void writeEEPROM(uint16_t i, uint8_t data) {
-  if(EEPROM.read(i) != data) EEPROM.write(i, data);
-}
-
-int getNextToken(String &inStr) {
-  int index = inStr.indexOf(',');
-  String token;
-  if (index >= 0) {
-    token = inStr.substring(0, index);
-    inStr.remove(0, index + 1);
-  } else {
-    token = inStr;
-    inStr = "";
-  }
-  return token.toInt();
+int iGetToken(String &str) {
+  return sGetToken(str).toInt();
 }
 
 void processCommand(String command) {
@@ -329,9 +332,9 @@ void processCommand(String command) {
   int servoNum;
   int servoPosition;
 
-  if(getNextToken(command) != 999) return; // Be sure the input starts with 999
+  if(iGetToken(command) != 999) return; // Be sure the input starts with 999
 
-  int function = getNextToken(command);
+  int function = iGetToken(command);
   //Serial.print("functionNumber: ");
   //Serial.println(function);
 
@@ -341,9 +344,9 @@ void processCommand(String command) {
   }
 
   if(function == MOTOR_FUNCTION) {
-    motorNum = getNextToken(command);
-    motorDirection = getNextToken(command);
-    motorPower = getNextToken(command);
+    motorNum = iGetToken(command);
+    motorDirection = iGetToken(command);
+    motorPower = iGetToken(command);
 
     if(motorNum == 1) {
       //Serial.println("Received command for Motor Number 1");
@@ -359,8 +362,8 @@ void processCommand(String command) {
   }
 
   if(function == SERVO_FUNCTION) {
-    servoNum = getNextToken(command);
-    servoPosition = getNextToken(command);
+    servoNum = iGetToken(command);
+    servoPosition = iGetToken(command);
 
     if(servoNum == 1) {
       if(S1Position = servoPosition) {
@@ -398,7 +401,7 @@ int readClientRetEOFPos() {
 void checkHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
   if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
-    Serial.print("Heartbeat Lost. Motor shutdown");
+    //Serial.print("Heartbeat Lost. Motor shutdown");
     HeartbeatTimeoutCNT++;
     M1dir = 1;
     M1Speed = 0;
@@ -428,7 +431,10 @@ void checkLEDBlinkTimeout() {
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  if(WiFi.status() == WL_CONNECTED) {
+    ArduinoOTA.handle();
+  }
+  //Serial.print(WiFi.RSSI());
   yield();
   String command = "";
 
@@ -439,7 +445,6 @@ void loop() {
   //Serial.println("M1Changed-Send to motor");
   motorDrive(1, M1dir, M1Speed);
   M1Changed = false;
-
 
   //Serial.println("M2Changed-Send to motor");
   motorDrive(2, M2dir, M2Speed);
@@ -489,9 +494,9 @@ void loop() {
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
   int M1pixels = (M1Speed / 4.16);
-  display.drawRect(getDisplayX(62), getDisplayY((M1dir == 1)?(24 - M1pixels):(24)),2 , M1pixels);
+  display.drawRect(getDisplayX(62), getDisplayY((M1dir == 2)?(24 - M1pixels):(24)),2 , M1pixels);
   int M2pixels = (M2Speed / 4.16);
-  display.drawRect(getDisplayX(0), getDisplayY((M2dir == 2)?(24 - M2pixels):(24)),2 , M2pixels);
+  display.drawRect(getDisplayX(0), getDisplayY((M2dir == 1)?(24 - M2pixels):(24)),2 , M2pixels);
   display.display();
 }
 
