@@ -25,11 +25,6 @@
 #error "This is here to make sure WEMOS_Motor.cpp has the delays removed from the functions."
 #endif
 
-#ifndef _OTA_DELAY_REMOVED
-#error "If you see this, add the above define and remove the delay calls."
-#error "This is here to make sure ArduinoOTA.cpp has the delays removed from the functions."
-#endif
-
 IPAddress ipClient(192, 168, 1, 205);
 //IPAddress ip(192, 168, 4, 1);
 IPAddress gateway(192, 168, 1, 1);
