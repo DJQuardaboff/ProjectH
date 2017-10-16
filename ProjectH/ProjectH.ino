@@ -62,10 +62,10 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 #define PROJECT_TOKEN_ADDR 0x020
 #define PROJECT_TOKEN "REMOTECAR"
 
+#define SETUP_FUNCTION 1
 #define HEARTBEAT_FUNCTION 3
 #define MOTOR_FUNCTION 5
 #define SERVO_FUNCTION 6
-//#define QueryPins 20
 
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
 
@@ -138,23 +138,19 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   This code is in the public domain.
 */
 
-//SSD1306  display(0x3c, 4, 5);
-
 WiFiServer server(23);
-Motor M1(0x30, _MOTOR_A, 1000); //Motor A
-Motor M2(0x30, _MOTOR_B, 1000); //Motor B
+Motor leftMotor(0x30, _MOTOR_A, 1000);
+Motor rightMotor(0x30, _MOTOR_B, 1000);
 SSD1306  display(0x3c, D2, D1);
-Servo myservo;  // create servo object to control a servo
+Servo myservo;
 
-int displayLines[] = {15, 27, 39, 51}; // 4 Lines on the display
+uint8_t leftMotorDir = _CW;
+uint8_t leftMotorSpeed = 0;
+bool leftMotorChanged = true;
 
-uint8_t M1dir = _CW;
-int M1Speed = 0;
-bool M1Changed = true;
-
-uint8_t M2dir = _CW;
-int M2Speed = 0;
-bool M2Changed = true;
+uint8_t rightMotorDir = _CW;
+uint8_t rightMotorSpeed = 0;
+bool rightMotorChanged = true;
 
 int S1Position = 0;
 bool S1Changed = true;
@@ -186,15 +182,11 @@ const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTER
 
 void setup() {
   delay(250);
-  Serial.begin(250000);   // if not using the Pro Micro then use this and change every reference to Serial below to Serial
+  Serial.begin(250000); // if not using the Pro Micro then use this and change every reference to Serial below to Serial
   delay(250);
 
-  
-
-  M1.setmotor(_STOP);
-  M2.setmotor(_STOP);
-  //  motorDrive(1, 1, 50);
-  //  motorDrive(2, 1, 50);
+  leftMotor.setmotor(_STOP);
+  rightMotor.setmotor(_STOP);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -285,7 +277,7 @@ void setup() {
   client = server.available();
 }
 
-String readEEPROMToken(uint16_t addr) {
+String readEEPROMToken(uint32_t addr) {
   String str;
   char temp;
   while(true) {
@@ -296,8 +288,8 @@ String readEEPROMToken(uint16_t addr) {
   return str;
 }
 
-void writeEEPROMToken(uint16_t addr, String str) {
-  for(uint8_t i = addr; i < sizeof(str); i++) EEPROM.write(i, str[i]);
+void writeEEPROMToken(uint32_t addr, String str) {
+  for(uint32_t i = addr; i < sizeof(str); i++) EEPROM.write(i, str[i]);
   EEPROM.write(addr + sizeof(str), 0x00);
 }
 
@@ -343,14 +335,14 @@ void processCommand(String command) {
 
     if(motorNum == 1) {
       //Serial.println("Received command for Motor Number 1");
-      M1Changed = true;
-      M1dir = motorDirection;
-      M1Speed = motorPower;
+      leftMotorChanged = true;
+      leftMotorDir = motorDirection;
+      leftMotorSpeed = motorPower;
     } else if (motorNum == 2) {
       //Serial.println("Received command for Motor Number 2");
-      M2Changed = true;
-      M2dir = motorDirection;
-      M2Speed = motorPower;
+      rightMotorChanged = true;
+      rightMotorDir = motorDirection;
+      rightMotorSpeed = motorPower;
     }
   }
 
@@ -396,13 +388,13 @@ void checkHeartbeatTimeout() {
   if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
     //Serial.print("Heartbeat Lost. Motor shutdown");
     HeartbeatTimeoutCNT++;
-    M1dir = 1;
-    M1Speed = 0;
-    M1Changed = true;
+    leftMotorDir = 1;
+    leftMotorSpeed = 0;
+    leftMotorChanged = true;
 
-    M2dir = 1;
-    M2Speed = 0;
-    M2Changed = true;
+    rightMotorDir = 1;
+    rightMotorSpeed = 0;
+    rightMotorChanged = true;
 
     S1Position = 0;
     S1Changed = true;
@@ -435,13 +427,13 @@ void loop() {
 
   checkLEDBlinkTimeout();
 
-  //Serial.println("M1Changed-Send to motor");
-  motorDrive(1, M1dir, M1Speed);
-  M1Changed = false;
+  //Serial.println("leftMotorChanged-Send to motor");
+  motorDrive(1, leftMotorDir, leftMotorSpeed);
+  leftMotorChanged = false;
 
-  //Serial.println("M2Changed-Send to motor");
-  motorDrive(2, M2dir, M2Speed);
-  M2Changed = false;
+  //Serial.println("rightMotorChanged-Send to motor");
+  motorDrive(2, rightMotorDir, rightMotorSpeed);
+  rightMotorChanged = false;
 
   if(S1Changed) {
     myservo.write(S1Position);
@@ -486,10 +478,10 @@ void loop() {
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
-  int M1pixels = (M1Speed / 4.16);
-  display.drawRect(getDisplayX(62), getDisplayY((M1dir == 2)?(24 - M1pixels):(24)),2 , M1pixels);
-  int M2pixels = (M2Speed / 4.16);
-  display.drawRect(getDisplayX(0), getDisplayY((M2dir == 1)?(24 - M2pixels):(24)),2 , M2pixels);
+  uint16_t leftMotorPixels = (leftMotorSpeed / 4.16);
+  display.drawRect(getDisplayX(62), getDisplayY((leftMotorDir == 2)?(24 - leftMotorPixels):(24)),2 , leftMotorPixels);
+  uint16_t rightMotorPixels = (rightMotorSpeed / 4.16);
+  display.drawRect(getDisplayX(0), getDisplayY((rightMotorDir == 1)?(24 - rightMotorPixels):(24)),2 , rightMotorPixels);
   display.display();
 }
 
@@ -497,7 +489,7 @@ void WeaponDrive(int servoNum, uint8_t percent) {
   if(servoNum <= 0) return;
   if(percent > 100) percent = 100;
   int escDuty = map(percent, 0, 100, 50, 179);
-  if(percent == 0) escDuty = 50; else escDuty = 165;
+  //if(percent == 0) escDuty = 50; else escDuty = 165;
 
   //myservo.write(Escduty);
   //myservo.attach(SERVOESC_PIN);
@@ -525,36 +517,36 @@ void motorDrive(int motorNum, int motorDir, int percent) {
     case 0:  //brake motor
       //Serial.println("Motor brake");
       if (motorNum == 1)
-        M1.setmotor(_STOP);
+        leftMotor.setmotor(_STOP);
       if (motorNum == 2)
-        M2.setmotor(_STOP);
+        rightMotor.setmotor(_STOP);
       break;
 
     case 1:  //turn counter-clockwise
       //Serial.println("turn counter-clockwise");
 
       if (motorNum == 1) {
-        M1.setmotor( _CCW, percent);
+        leftMotor.setmotor( _CCW, percent);
       }
 
       if (motorNum == 2) {
-        M2.setmotor( _CCW, percent);
+        rightMotor.setmotor( _CCW, percent);
       }
       break;
     case 2:  //turn clockwise
       //Serial.println("turn clockwise");
       if (motorNum == 1)
-        M1.setmotor( _CW, percent);
+        leftMotor.setmotor( _CW, percent);
       if (motorNum == 2)
-        M2.setmotor( _CW, percent);
+        rightMotor.setmotor( _CW, percent);
       break;
 
     case 3:  //disable/coast
       //Serial.println("Motor disable/coast");
       if (motorNum == 1)
-        M1.setmotor(_STANDBY);
+        leftMotor.setmotor(_STANDBY);
       if (motorNum == 2)
-        M2.setmotor(_STANDBY);
+        rightMotor.setmotor(_STANDBY);
       break;
   }
 }
@@ -582,8 +574,8 @@ uint16_t getDisplayY(uint16_t y) {
 }
 
 /*
-void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t percent) {
-  if (percent > 100) percent = 100;
+void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t percent) {
+  if(percent > 100) percent = 100;
   uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
   display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
   display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
@@ -606,9 +598,8 @@ void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness,
   } else if (connecting) {
     lastLoadingCircle = (lastLoadingCircle % LOADING_CIRCLE_TIME);
     temp = (lastLoadingCircle % LOADING_CIRCLE_TIME) / ((float)LOADING_CIRCLE_TIME);
-  } else {
-    return;
-  }
+  } else return;
+  
   temp = (temp < .5) ? (exp(temp / LOADING_CIRCLE_CONST)) : ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - exp((1 - temp) / LOADING_CIRCLE_CONST));
   temp = temp / ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - 1);
   float temp2 = changeResolution(temp, circumference);
@@ -638,7 +629,7 @@ void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
 }
 
 void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t dotSize) {
-  uint16_t phaseNum = (width * 2) - dotSize;
+  uint16_t phaseNum = ((width - dotsize) * 2) - 1;
   float phase = (((lastHeartbeat / (HEARTBEAT_TIME / ((float)phaseNum)))) + dotSize - 1) / ((float)phaseNum);
   phase = (phase < .5) ? (exp(phase / HEARTBEAT_CONST)) : ((exp(.5 / HEARTBEAT_CONST) * 2) - exp((1 - phase) / HEARTBEAT_CONST));
   phase = ((phase / ((exp(.5 / HEARTBEAT_CONST) * 2) - 1))) * phaseNum;
@@ -672,34 +663,3 @@ void drawArc(uint16_t x, uint16_t y, float radius, float startTheta, float endTh
     dy = dytemp;
   }
 }
-
-
-// in loop   RotatingCube();
-
-/*
-  void RotatingCube () {
-  const int Delta = 9; // Approximation to 1 degree in radians * 2^9
-  xOrigin = 32; yOrigin = 24;
-  int x = 0, y = 22<<9;
-  for (;;) {
-    ClearBuffer();
-    int x9 = x>>9, y9 = y>>9, x10 = x>>10, y10 = y>>10;
-    // Top
-    MoveTo(x9, y10 + 12); DrawTo(y9, -x10 + 12);
-    DrawTo(-x9, -y10 + 12); DrawTo(-y9, x10 + 12);
-    DrawTo(x9, y10 + 12); DrawTo(x9, y10 - 12);
-    // Bottom
-    DrawTo(y9, -x10 - 12); DrawTo(-x9, -y10 - 12);
-    DrawTo(-y9, x10 - 12); DrawTo(x9, y10 - 12);
-    // Sides
-    MoveTo(y9, -x10 + 12); DrawTo(y9, -x10 - 12);
-    MoveTo(-x9, -y10 + 12); DrawTo(-x9, -y10 - 12);
-    MoveTo(-y9, x10 + 12); DrawTo(-y9, x10 - 12);
-    // Rotate cube
-    x = x + (y9 * Delta);
-    y = y - ((x>>9) * Delta);
-    DisplayBuffer();
-  }
-  }
-
-*/
