@@ -151,11 +151,17 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   This code is in the public domain.
 */
 
+typedef struct {
+  Servo servoObject;
+  uint8_t pin;
+  int position;
+  bool changed;
+} ServoInfo;
+
 WiFiServer server(23);
 Motor leftMotor(0x30, _MOTOR_A, 1000);
 Motor rightMotor(0x30, _MOTOR_B, 1000);
 SSD1306  display(0x3c, D2, D1);
-Servo myservo;
 
 uint8_t leftMotorDir = _CW;
 uint8_t leftMotorSpeed = 0;
@@ -165,14 +171,8 @@ uint8_t rightMotorDir = _CW;
 uint8_t rightMotorSpeed = 0;
 bool rightMotorChanged = true;
 
-int S1Position = 0;
-bool S1Changed = true;
-
-int S2Position = 0;
-bool S2Changed = true;
-
-int S3Position = 0;
-bool S3Changed = true;
+ServoInfo *servo;
+uint8_t servoNum;
 
 // This is using D4
 unsigned long NextLEDBlinkTime = 0;
@@ -203,7 +203,6 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
   //Attach to the ESC
-  myservo.attach(SERVOESC_PIN);
   //  delay(500);
   //  myservo.write(179);
   //  delay(500);
@@ -219,6 +218,9 @@ void setup() {
   */
 
   while(!Serial);
+  for(uint8_t i = 0; i < servoNum; i++) {
+    servo[i].servoObject.attach(SERVOESC_PIN);
+  }
 
   WiFi.begin(updater_ssid, updater_password);
   WiFi.mode(WIFI_STA);
@@ -364,24 +366,12 @@ void processCommand(String command) {
       rightMotorSpeed = motorPower;
     }
   } else if(function == SERVO_FUNCTION) {
-    int servoNum = iGetToken(command);
+    int servoIndex = iGetToken(command);
     int servoPosition = iGetToken(command);
 
-    if(servoNum == 1) {
-      if(S1Position = servoPosition) {
-        S1Changed = true;
-        S1Position = servoPosition;
-      }
-    } else if(servoNum == 2) {
-      if (S2Position = servoPosition) {
-        S2Changed = true;
-        S2Position = servoPosition;
-      }
-    } else if(servoNum == 3) {
-      if(S3Position = servoPosition) {
-        S3Changed = true;
-        S3Position = servoPosition;
-      }
+    if(servoIndex < servoNum) {
+      servo[servoIndex].position = servoPosition;
+      servo[servoIndex].changed = true;
     }
   }
 
@@ -412,14 +402,12 @@ void checkHeartbeatTimeout() {
     rightMotorSpeed = 0;
     rightMotorChanged = true;
 
-    S1Position = 0;
-    S1Changed = true;
-
-    S2Position = 0;
-    S2Changed = true;
-
-    S3Position = 0;
-    S3Changed = true;
+    /* this would move the servos
+    for(uint16_t i; i < servoNum; i++) {
+      servo[i].position = 0;
+      servo[i].changed = true;
+    }
+    */
   }
 }
 
@@ -450,11 +438,6 @@ void loop() {
   //Serial.println("rightMotorChanged-Send to motor");
   motorDrive(2, rightMotorDir, rightMotorSpeed);
   rightMotorChanged = false;
-
-  if(S1Changed) {
-    myservo.write(S1Position);
-    S1Changed = false;
-  }
 
   if(client) {
     if(client.connected()) {
