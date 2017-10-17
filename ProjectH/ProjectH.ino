@@ -36,7 +36,7 @@ char *updater_password;
 
 char *ota_hostname = "ProjectH";
 
-String username;
+char *username;
 
 const uint64_t LOADING_CIRCLE_TIME  = 1000;
 const uint64_t CHECKMARK_TIME       = 1000;
