@@ -220,9 +220,9 @@ void setup() {
   } else {
     setupRequired = true;
     SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_DEFAULT.length());
-    PW_TOKEN_DEFAULT.toCharArray(ssid, PW_TOKEN_DEFAULT.length());
-    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(ssid, UPDATER_SSID_TOKEN_DEFAULT.length());
-    UPDATER_PW_TOKEN_DEFAULT.toCharArray(ssid, UPDATER_PW_TOKEN_DEFAULT.length());
+    PW_TOKEN_DEFAULT.toCharArray(password, PW_TOKEN_DEFAULT.length());
+    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(updater_ssid, UPDATER_SSID_TOKEN_DEFAULT.length());
+    UPDATER_PW_TOKEN_DEFAULT.toCharArray(updater_password, UPDATER_PW_TOKEN_DEFAULT.length());
   }
 
   leftMotor.setmotor(_STOP);
