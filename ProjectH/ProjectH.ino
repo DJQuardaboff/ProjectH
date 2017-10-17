@@ -257,9 +257,12 @@ void setup() {
   });
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    String progressStr = String(progress / (total / 100)) + '%';
     display.clear();
-    display.drawProgressBar(32, 40, 63, 7, (progress / (total / 100)));
-
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.drawString(getDisplayX(32), getDisplayY(10), progressStr);
+    display.drawProgressBar(getDisplayX(0), getDisplayX(24), 63, 8, (progress / (total / 100)));
     display.display();
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
@@ -480,11 +483,13 @@ void loop() {
   }
 
   display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(getDisplayX(32), getDisplayY(0), "");
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
   drawMotorVisuals();
-  display.drawProgressBar(32, 40, 63, 7, 35);
   display.display();
 }
 
@@ -562,11 +567,11 @@ void motorDrive(int motorNum, int motorDir, int percent) {
   }
 }
 
-uint16_t getDisplayX(uint16_t x) {
+uint16_t getDisplayX(int x) {
   return x + 32;
 }
 
-uint16_t getDisplayY(uint16_t y) {
+uint16_t getDisplayY(int y) {
   return y + 16;
 }
 
