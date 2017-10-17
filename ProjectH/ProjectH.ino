@@ -471,7 +471,7 @@ void loop() {
 
 void WeaponDrive(int servoNum, uint8_t percent) {
   if(servoNum <= 0) return;
-  if(percent > 100) percent = 100;
+  percent = _min(percent, 100);
   int escDuty = map(percent, 0, 100, 50, 179);
   //if(percent == 0) escDuty = 50; else escDuty = 165;
 
@@ -489,6 +489,7 @@ void WeaponDrive(int servoNum, uint8_t percent) {
 
 //******************   Motor A control   *******************
 void motorDrive(int motorNum, int motorDir, int percent) {
+  percent = _min(percent, 100);
 
   //change the percentage range of 0 -> 100 into the PWM range of 0 -> 255 using the map function
   if (motorNum <= 0) {
@@ -545,7 +546,7 @@ uint16_t getDisplayY(uint16_t y) {
 
 /*
 void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t percent) {
-  if(percent > 100) percent = 100;
+  percent = min(percent, 100):
   uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
   display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
   display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
