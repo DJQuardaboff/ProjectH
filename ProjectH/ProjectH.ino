@@ -462,11 +462,16 @@ void loop() {
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
+  drawMotorVisuals();
+  display.drawProgressBar(32, 40, 63, 7, 35);
+  display.display();
+}
+
+void drawMotorVisuals() {
   uint16_t leftMotorPixels = (leftMotorSpeed / 4.16);
   display.drawRect(getDisplayX(62), getDisplayY((leftMotorDir == 2)?(24 - leftMotorPixels):(24)),2 , leftMotorPixels);
   uint16_t rightMotorPixels = (rightMotorSpeed / 4.16);
   display.drawRect(getDisplayX(0), getDisplayY((rightMotorDir == 1)?(24 - rightMotorPixels):(24)),2 , rightMotorPixels);
-  display.display();
 }
 
 void WeaponDrive(int servoNum, uint8_t percent) {
