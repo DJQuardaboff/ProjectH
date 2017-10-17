@@ -32,11 +32,11 @@ IPAddress subnet(255, 255, 255, 0);
 
 
 /* Set these to your desired credentials. */
-const char *ssid = "ProjectH002";
-const char *password = "projecth";
+String ssid;
+String password;
 
 const char *updater_ssid = "TimAustinUpdater";
-const char *updater_password = "ProjectH";
+const char *updater_password = "projecthup";
 
 const char *ota_hostname = "ProjectH";
 
@@ -61,10 +61,23 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 #define SERIES_TOKEN "PROJECTH"
 #define PROJECT_TOKEN_ADDR 0x020
 #define PROJECT_TOKEN "REMOTECAR"
+#define SSID_TOKEN_ADDR 0x030
+#define PW_TOKEN_ADDR 0x050
+#define UPDATER_SSID_TOKEN_ADDR 0x030
+#define UPDATER_SSID_TOKEN "TimAustinUpdater"
+#define UPDATER_PASS_TOKEN_ADDR 0x050
+#define UPDATER_PASS_TOKEN "projecthup"
 
+#define COMMAND_START 999
 #define SETUP_FUNCTION 1
+#define SETUP_WIFI_FUNCTION2 5
+#define SETUP_WIFI_SSID_FUNCTION3 "SOFT_AP_SSID"
+#define SETUP_WIFI_PW_FUNCTION3 "SOFT_AP_PW"
+#define SETUP_RESET_FUNCTION2 6
 #define HEARTBEAT_FUNCTION 3
 #define MOTOR_FUNCTION 5
+#define MOTOR_LEFT 1
+#define MOTOR_RIGHT 2
 #define SERVO_FUNCTION 6
 
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
@@ -175,7 +188,6 @@ WiFiClient client;
 elapsedMillis lastLoadingCircle;
 elapsedMillis lastCheckmark;
 elapsedMillis lastHeartbeat;
-int HeartbeatTimeoutCNT = 0;
 
 // Pin on the Arduino going to the ESC for the weapon. This should be the yellow control wire.
 const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTERFERE WITH THE BOOT SEQUENCE ON THE D1
@@ -311,44 +323,49 @@ int iGetToken(String &str) {
 }
 
 void processCommand(String command) {
-  int motorNum;
-  int motorDirection;
-  int motorPower;
-  int servoNum;
-  int servoPosition;
-
-  if(iGetToken(command) != 999) return; // Be sure the input starts with 999
+  if(iGetToken(command) != COMMAND_START) return; // Be sure the input starts with 999
 
   int function = iGetToken(command);
   //Serial.print("functionNumber: ");
   //Serial.println(function);
 
-  if(function == HEARTBEAT_FUNCTION) {
+  if(function == SETUP_FUNCTION) {
+    int function2 =  iGetToken(command);
+    bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
+
+    if(function2 == SETUP_WIFI_FUNCTION2) {
+      String function3 =  sGetToken(command);
+      String str =  sGetToken(command);
+      if(function3 == SETUP_WIFI_SSID_FUNCTION3) {
+        writeEEPROMToken(SSID_TOKEN_ADDR, str);
+      } else if(function3 == SETUP_WIFI_PW_FUNCTION3) {
+        writeEEPROMToken(PW_TOKEN_ADDR, str);
+      }
+    } else if (function2 == SETUP_RESET_FUNCTION2) {
+      writeEEPROMToken(START_TOKEN_ADDR, "\0");
+      ESP.restart();
+    }
+  } else if(function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
-    HeartbeatTimeoutCNT = 0;
-  }
+  } else if(function == MOTOR_FUNCTION) {
+    int motorNum = iGetToken(command);
+    int motorDirection = iGetToken(command);
+    int motorPower = iGetToken(command);
 
-  if(function == MOTOR_FUNCTION) {
-    motorNum = iGetToken(command);
-    motorDirection = iGetToken(command);
-    motorPower = iGetToken(command);
-
-    if(motorNum == 1) {
+    if(motorNum == MOTOR_LEFT) {
       //Serial.println("Received command for Motor Number 1");
       leftMotorChanged = true;
       leftMotorDir = motorDirection;
       leftMotorSpeed = motorPower;
-    } else if (motorNum == 2) {
+    } else if (motorNum == MOTOR_RIGHT) {
       //Serial.println("Received command for Motor Number 2");
       rightMotorChanged = true;
       rightMotorDir = motorDirection;
       rightMotorSpeed = motorPower;
     }
-  }
-
-  if(function == SERVO_FUNCTION) {
-    servoNum = iGetToken(command);
-    servoPosition = iGetToken(command);
+  } else if(function == SERVO_FUNCTION) {
+    int servoNum = iGetToken(command);
+    int servoPosition = iGetToken(command);
 
     if(servoNum == 1) {
       if(S1Position = servoPosition) {
@@ -385,9 +402,8 @@ int readClientRetEOFPos() {
 
 void checkHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
-  if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {// && (HeartbeatTimeoutCNT < 3)) {
+  if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {
     //Serial.print("Heartbeat Lost. Motor shutdown");
-    HeartbeatTimeoutCNT++;
     leftMotorDir = 1;
     leftMotorSpeed = 0;
     leftMotorChanged = true;
@@ -629,7 +645,7 @@ void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
 }
 
 void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t dotSize) {
-  uint16_t phaseNum = ((width - dotsize) * 2) - 1;
+  uint16_t phaseNum = ((width - dotSize) * 2) - 1;
   float phase = (((lastHeartbeat / (HEARTBEAT_TIME / ((float)phaseNum)))) + dotSize - 1) / ((float)phaseNum);
   phase = (phase < .5) ? (exp(phase / HEARTBEAT_CONST)) : ((exp(.5 / HEARTBEAT_CONST) * 2) - exp((1 - phase) / HEARTBEAT_CONST));
   phase = ((phase / ((exp(.5 / HEARTBEAT_CONST) * 2) - 1))) * phaseNum;
