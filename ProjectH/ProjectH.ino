@@ -280,7 +280,7 @@ void setup() {
 String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
   String str;
   char temp;
-  while(sizeof(str) < maxLength) {
+  while(str.length() < maxLength) {
     temp = EEPROM.read(addr++);
     if(!temp) break;
     str += temp;
@@ -289,7 +289,7 @@ String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
 }
 
 bool writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
-  uint32_t length = _min(sizeof(str), maxSize - 1);
+  uint32_t length = _min(str.length(), maxSize - 1);
   for(uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str[i]);
   EEPROM.write(addr + length, 0x00);
 }
