@@ -182,6 +182,7 @@ elapsedMillis lastLedChange = 0;
 bool ledOn = false;
 #define LED_BLINK_TIMEOUT 2000     // 1 off / 1 second on
 
+bool setupRequired = false;
 String sClientIn = "";         // a string to hold incoming data
 bool connecting = true;
 bool clientConnected = false;
@@ -198,6 +199,23 @@ const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTER
 void setup() {
   Serial.begin(250000);
   while(!Serial);
+
+  if((readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) == START_TOKEN) && (readEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN_LENGTH) == SERIES_TOKEN) && (readEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN_LENGTH) == PROJECT_TOKEN)) {
+    String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
+    temp.toCharArray(ssid, temp.length());
+    temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
+    temp.toCharArray(password, temp.length());
+    temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
+    temp.toCharArray(updater_ssid, temp.length());
+    temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
+    temp.toCharArray(updater_password, temp.length());
+  } else {
+    setupRequired = true;
+    SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_DEFAULT.length());
+    PW_TOKEN_DEFAULT.toCharArray(ssid, PW_TOKEN_DEFAULT.length());
+    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(ssid, UPDATER_SSID_TOKEN_DEFAULT.length());
+    UPDATER_PW_TOKEN_DEFAULT.toCharArray(ssid, UPDATER_PW_TOKEN_DEFAULT.length());
+  }
 
   leftMotor.setmotor(_STOP);
   rightMotor.setmotor(_STOP);
