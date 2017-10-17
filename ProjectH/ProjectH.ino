@@ -70,7 +70,7 @@ const uint32_t  UPDATER_SSID_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
 const String    UPDATER_SSID_TOKEN_DEFAULT  = "TimAustinUpdater";
 const uint32_t  UPDATER_SSID_TOKEN_LENGTH   = 0x020;
 const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
-const String    UPDATER_PW_TOKEN            = "projecthup";
+const String    UPDATER_PW_TOKEN_DEFAULT    = "projecthup";
 const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
 
 #define COMMAND_START 999
@@ -79,6 +79,7 @@ const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
 #define SETUP_WIFI_SSID "SOFT_AP_SSID"
 #define SETUP_WIFI_PW "SOFT_AP_PW"
 #define SETUP_RESET 6
+#define REBOOT_FUNCTION 2
 #define HEARTBEAT_FUNCTION 3
 #define MOTOR_FUNCTION 5
 #define MOTOR_LEFT 1
@@ -350,8 +351,9 @@ void processCommand(String command) {
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
-      ESP.restart();
     }
+  } else if(function == REBOOT_FUNCTION) {
+    ESP.restart();
   } else if(function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
   } else if(function == MOTOR_FUNCTION) {
