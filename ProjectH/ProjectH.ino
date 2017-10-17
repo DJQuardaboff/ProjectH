@@ -1,16 +1,13 @@
-#include <EEPROM.h>
-#include "ArduinoOTA.h"
-
 /*
-
-  Arduino program for controlling a Battle Robot using 2 L298N H Bridge Chip and a Weapon using an ESC.
-  This is updated for the NodeMCU
-  Version 3
-  8/27/2017 - Adding heartbeat
-  9/12/2017 - Adding OTA from Austin
-  /* Create a WiFi access point and provide a web server on it. */
-
-
+ * Arduino program for controlling a Battle Robot using 2 L298N H Bridge Chip and a Weapon using an ESC.
+ * This is updated for the NodeMCU
+ * Version 3
+ * 8/27/2017 - Adding heartbeat
+ * 9/12/2017 - Adding OTA from Austin
+ */
+ 
+#include <EEPROM.h>
+#include <ArduinoOTA.h>
 #include <Servo.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -30,7 +27,6 @@ IPAddress ipClient(192, 168, 1, 205);
 IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
-
 /* Set these to your desired credentials. */
 String ssid;
 String password;
@@ -40,13 +36,13 @@ const char *updater_password = "projecthup";
 
 const char *ota_hostname = "ProjectH";
 
-const uint64_t LOADING_CIRCLE_TIME = 1000;
-const uint64_t CHECKMARK_TIME = 1000;
-const uint64_t HEARTBEAT_TIME = 900;
+const uint64_t LOADING_CIRCLE_TIME  = 1000;
+const uint64_t CHECKMARK_TIME       = 1000;
+const uint64_t HEARTBEAT_TIME       = 900;
 
-const float LOADING_CIRCLE_CONST = (LOADING_CIRCLE_TIME / 8000.0);
-const float CHECKMARK_CONST = (CHECKMARK_TIME / 8000.0);
-const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
+const float LOADING_CIRCLE_CONST    = (LOADING_CIRCLE_TIME / 8000.0);
+const float CHECKMARK_CONST         = (CHECKMARK_TIME / 8000.0);
+const float HEARTBEAT_CONST         = (HEARTBEAT_TIME / 8000.0);
 
 /*
   The input to the Anduino is as follows.
@@ -55,25 +51,34 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
   Ending with one byte #10 - Also know as <lf> or /n or char #10 (These are the same. ).
 */
 
-#define START_TOKEN_ADDR 0x000
-#define START_TOKEN "AUSTIN_TIM"
-#define SERIES_TOKEN_ADDR 0x010
-#define SERIES_TOKEN "PROJECTH"
-#define PROJECT_TOKEN_ADDR 0x020
-#define PROJECT_TOKEN "REMOTECAR"
-#define SSID_TOKEN_ADDR 0x030
-#define PW_TOKEN_ADDR 0x050
-#define UPDATER_SSID_TOKEN_ADDR 0x030
-#define UPDATER_SSID_TOKEN "TimAustinUpdater"
-#define UPDATER_PASS_TOKEN_ADDR 0x050
-#define UPDATER_PASS_TOKEN "projecthup"
+const uint32_t  START_TOKEN_ADDR            = 0x000;
+const String    START_TOKEN                 = "AUSTIN_TIM";
+const uint32_t  START_TOKEN_LENGTH          = 0x010;
+const uint32_t  SERIES_TOKEN_ADDR           = START_TOKEN_ADDR + START_TOKEN_LENGTH;
+const String    SERIES_TOKEN                = "PROJECTH";
+const uint32_t  SERIES_TOKEN_LENGTH         = 0x010;
+const uint32_t  PROJECT_TOKEN_ADDR          = SERIES_TOKEN_ADDR + SERIES_TOKEN_LENGTH;
+const String    PROJECT_TOKEN               = "REMOTECAR";
+const uint32_t  PROJECT_TOKEN_LENGTH        = 0x010;
+const uint32_t  SSID_TOKEN_ADDR             = PROJECT_TOKEN_ADDR + PROJECT_TOKEN_LENGTH;
+const String    SSID_TOKEN_DEFAULT          = "projecth000";
+const uint32_t  SSID_TOKEN_LENGTH           = 0x020;
+const uint32_t  PW_TOKEN_ADDR               = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
+const String    PW_TOKEN_DEFAULT            = "projecth";
+const uint32_t  PW_TOKEN_LENGTH             = 0x020;
+const uint32_t  UPDATER_SSID_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+const String    UPDATER_SSID_TOKEN_DEFAULT  = "TimAustinUpdater";
+const uint32_t  UPDATER_SSID_LENGTH         = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_LENGTH;
+const String    UPDATER_PW_TOKEN            = "projecthup";
+const uint32_t  UPDATER_PW_LENGTH           = 0x020;
 
 #define COMMAND_START 999
 #define SETUP_FUNCTION 1
-#define SETUP_WIFI_FUNCTION2 5
-#define SETUP_WIFI_SSID_FUNCTION3 "SOFT_AP_SSID"
-#define SETUP_WIFI_PW_FUNCTION3 "SOFT_AP_PW"
-#define SETUP_RESET_FUNCTION2 6
+#define SETUP_WIFI 5
+#define SETUP_WIFI_SSID "SOFT_AP_SSID"
+#define SETUP_WIFI_PW "SOFT_AP_PW"
+#define SETUP_RESET 6
 #define HEARTBEAT_FUNCTION 3
 #define MOTOR_FUNCTION 5
 #define MOTOR_LEFT 1
@@ -84,11 +89,9 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 
 /*
   ------------------------------------
-  For Heartbeat
-  The Android will send Heartbeat only
-  Example
-  999,3
-  999,3
+  For HEARTBEAT_FUNCTION
+  The App will send Heartbeat only
+  Example:
   999,3
   ---------------------
   For MOTOR_FUNCTION
@@ -104,8 +107,8 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 
   speed is a number 0 -> 100 that represents percentage of
   motor speed.
-  0 = no power - maybe the same as Mode 0
-  50 = 50% of full motor speed
+  0   = no power - maybe the same as Mode 0
+  50  = 50% of full motor speed
   100 = 100% of full motor speed
 
   Examples...
@@ -116,9 +119,9 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 
   From WEMOS_Motor.h
   _SHORT_BRAKE  0
-  _CCW      1
-  _CW         2
-  _STOP     3
+  _CCW          1
+  _CW           2
+  _STOP         3
   ----------------------------
   For SERVO_FUNCTION - Normally the weapon
   The Android will send ServoESCControl + 2 additional numbers
@@ -138,7 +141,7 @@ const float HEARTBEAT_CONST = (HEARTBEAT_TIME / 8000.0);
 
   The Android program can get the pin assignments from this program. 20 is used as the query command.
   The Arduino will respond with the pin assigned.
-  The Android will send 3 numbers followed by one byte <lf> or /n or char #10 (These are the same). Examples...
+  The Android will send 3 numbers followed by one byte <lf> or '\n' or char #10 (These are the same). Examples...
   20,1,24     Send ENA  // Left Motor PWM
   20,4,24     Send IN1  // Left Motor direction Control
   20,4,24     Send IN2  // Left Motor direction Control
@@ -175,14 +178,14 @@ ServoInfo *servo;
 uint8_t servoNum;
 
 // This is using D4
-unsigned long NextLEDBlinkTime = 0;
-bool LED_On_Off = 0;
-#define NextLEDBlinkTimeout 2000     // 1 off / 1 second on
+elapsedMillis lastLedChange = 0;
+bool ledOn = false;
+#define LED_BLINK_TIMEOUT 2000     // 1 off / 1 second on
 
 String sClientIn = "";         // a string to hold incoming data
-bool connecting;
-bool ClientConnected = false;
-bool disconnected;
+bool connecting = true;
+bool clientConnected = false;
+bool disconnected = false;
 WiFiClient client;
 
 elapsedMillis lastLoadingCircle;
@@ -193,31 +196,14 @@ elapsedMillis lastHeartbeat;
 const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTERFERE WITH THE BOOT SEQUENCE ON THE D1
 
 void setup() {
-  delay(250);
-  Serial.begin(250000); // if not using the Pro Micro then use this and change every reference to Serial below to Serial
-  delay(250);
+  Serial.begin(250000);
+  while(!Serial);
 
   leftMotor.setmotor(_STOP);
   rightMotor.setmotor(_STOP);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
-  //Attach to the ESC
-  //  delay(500);
-  //  myservo.write(179);
-  //  delay(500);
-
-  //  Serial.print("Configuring access point...");
-  /* You can remove the password parameter if you want the AP to be open. */
-
-  /*
-    WiFi.mode(WIFI_STA);
-    WiFi.hostname(deviceName);      // DHCP Hostname (useful for finding device for static lease)
-    WiFi.config(staticIP, gateway, subnet);  // (DNS not required)
-    WiFi.begin(ssid, password);
-  */
-
-  while(!Serial);
   for(uint8_t i = 0; i < servoNum; i++) {
     servo[i].servoObject.attach(SERVOESC_PIN);
   }
@@ -374,7 +360,6 @@ void processCommand(String command) {
       servo[servoIndex].changed = true;
     }
   }
-
 }
 
 int readClientRetEOFPos() {
@@ -411,11 +396,11 @@ void checkHeartbeatTimeout() {
   }
 }
 
-void checkLEDBlinkTimeout() {
-  if(millis() > NextLEDBlinkTime) {
-    NextLEDBlinkTime = millis() + NextLEDBlinkTimeout;
-    LED_On_Off = !LED_On_Off;
-    digitalWrite(LED_BUILTIN, LED_On_Off);
+void checkLedBlinkTimeout() {
+  if(lastLedChange >= LED_BLINK_TIMEOUT) {
+    lastLedChange -= LED_BLINK_TIMEOUT;
+    ledOn = !ledOn;
+    digitalWrite(LED_BUILTIN, ledOn);
   }
 }
 
@@ -429,19 +414,19 @@ void loop() {
 
   checkHeartbeatTimeout();
 
-  checkLEDBlinkTimeout();
+  //checkLedBlinkTimeout(); led doesn't look good
 
   //Serial.println("leftMotorChanged-Send to motor");
-  motorDrive(1, leftMotorDir, leftMotorSpeed);
+  motorDrive(MOTOR_LEFT, leftMotorDir, leftMotorSpeed);
   leftMotorChanged = false;
 
   //Serial.println("rightMotorChanged-Send to motor");
-  motorDrive(2, rightMotorDir, rightMotorSpeed);
+  motorDrive(MOTOR_RIGHT, rightMotorDir, rightMotorSpeed);
   rightMotorChanged = false;
 
   if(client) {
     if(client.connected()) {
-      ClientConnected = true;
+      clientConnected = true;
       connecting = false;
       disconnected = false;
       int EOFPos = readClientRetEOFPos();
@@ -452,7 +437,7 @@ void loop() {
         processCommand(command);
       }
     } else {
-      ClientConnected = false;
+      clientConnected = false;
       connecting = true;
       disconnected = true;
       lastLoadingCircle = 0;
@@ -462,12 +447,12 @@ void loop() {
       //      Serial.println("client disonnected");
     }
   } else {
-    ClientConnected = false;
+    clientConnected = false;
     connecting = true;
     disconnected = false;
     client = server.available();
     if(client) {
-      ClientConnected = true;
+      clientConnected = true;
       connecting = false;
       sClientIn = "";   // a string to hold incoming data
     }
@@ -550,20 +535,6 @@ void motorDrive(int motorNum, int motorDir, int percent) {
   }
 }
 
-//void printWiFiStatus() {
-  // print your WiFi shield's IP address:
-  //IPAddress ip = WiFi.softAPIP();
-  //Serial.print("2 softAP IP Address: ");
-  //Serial.println(ip);
-
-  //sDisplay(1, ssid);
-  //  String sIP = "IP:"+WiFi.softAPIP().toString();
-  //sDisplay(2, WiFi.softAPIP().toString());
-
-  //  display.display();
-
-//}
-
 uint16_t getDisplayX(uint16_t x) {
   return x + 32;
 }
@@ -588,7 +559,7 @@ void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness,
   uint16_t circumference = getRadians(radius);
   float offset = (length / 2) / ((float)circumference);
   bool endAnimation = false;
-  if (ClientConnected || disconnected) {
+  if (clientConnected || disconnected) {
     temp = lastLoadingCircle / ((float)LOADING_CIRCLE_TIME);
     if (temp > 1) {
       endAnimation = true;
