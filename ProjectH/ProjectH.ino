@@ -27,17 +27,6 @@ IPAddress ipClient(192, 168, 1, 205);
 IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
-/* Set these to your desired credentials. */
-char *ssid;
-char *password;
-
-char *updater_ssid;
-char *updater_password;
-
-char *ota_hostname = "ProjectH";
-
-char *username;
-
 const uint64_t LOADING_CIRCLE_TIME  = 1000;
 const uint64_t CHECKMARK_TIME       = 1000;
 const uint64_t HEARTBEAT_TIME       = 900;
@@ -76,13 +65,16 @@ const String    UPDATER_PW_TOKEN_DEFAULT    = "projecthup";
 const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
 const uint32_t  USERNAME_TOKEN_ADDR         = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
 const uint32_t  USERNAME_TOKEN_LENGTH       = 0x010;
+const uint32_t  FULL_EEPROM_USE             = USERNAME_TOKEN_ADDR + USERNAME_TOKEN_LENGTH;
 
 #define COMMAND_START 999
 #define SETUP_FUNCTION 1
 #define SETUP_USERNAME 4
-#define SETUP_WIFI 5
-#define SETUP_WIFI_SSID "SOFT_AP_SSID"
-#define SETUP_WIFI_PW "SOFT_AP_PW"
+#define SETUP_EEPROM 5
+#define SETUP_EEPROM_SSID "SOFT_AP_SSID"
+#define SETUP_EEPROM_PW "SOFT_AP_PW"
+#define SETUP_EEPROM_UPDATER_SSID "SOFT_AP_SSID"
+#define SETUP_EEPROM_UPDATER_PW "SOFT_AP_PW"
 #define SETUP_RESET 6
 #define SETUP_REBOOT 7
 #define HEARTBEAT_FUNCTION 3
@@ -160,6 +152,16 @@ const uint32_t  USERNAME_TOKEN_LENGTH       = 0x010;
   This code is in the public domain.
 */
 
+char *ssid = new char[SSID_TOKEN_LENGTH];
+char *password = new char[PW_TOKEN_LENGTH];
+
+char *updater_ssid = new char[UPDATER_SSID_TOKEN_LENGTH];
+char *updater_password = new char[UPDATER_PW_TOKEN_LENGTH];
+
+const char *ota_hostname = "ProjectH";
+
+String username;
+
 typedef struct {
   Servo servoObject;
   uint8_t pin;
@@ -206,25 +208,21 @@ void setup() {
   Serial.begin(250000);
   while(!Serial);
 
+  EEPROM.begin(FULL_EEPROM_USE);
   if((readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) == START_TOKEN) && (readEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN_LENGTH) == SERIES_TOKEN) && (readEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN_LENGTH) == PROJECT_TOKEN)) {
-    String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
-    temp.toCharArray(ssid, temp.length());
-    temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
-    temp.toCharArray(password, temp.length());
-    temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
-    temp.toCharArray(updater_ssid, temp.length());
-    temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
-    temp.toCharArray(updater_password, temp.length());
-    temp = readEEPROMToken(USERNAME_TOKEN_ADDR, USERNAME_TOKEN_LENGTH);
-    temp.toCharArray(username, temp.length());
+    readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH).toCharArray(ssid, SSID_TOKEN_LENGTH);
+    readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH).toCharArray(password, PW_TOKEN_LENGTH);
+    readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH).toCharArray(updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
+    readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
   } else {
     setupRequired = true;
-    SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_DEFAULT.length());
-    PW_TOKEN_DEFAULT.toCharArray(password, PW_TOKEN_DEFAULT.length());
-    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(updater_ssid, UPDATER_SSID_TOKEN_DEFAULT.length());
-    UPDATER_PW_TOKEN_DEFAULT.toCharArray(updater_password, UPDATER_PW_TOKEN_DEFAULT.length());
+    SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_LENGTH);
+    PW_TOKEN_DEFAULT.toCharArray(password, PW_TOKEN_LENGTH);
+    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(updater_ssid, SSID_TOKEN_LENGTH);
+    UPDATER_PW_TOKEN_DEFAULT.toCharArray(updater_ssid, PW_TOKEN_LENGTH);
   }
-
+  EEPROM.end();
+  
   leftMotor.setmotor(_STOP);
   rightMotor.setmotor(_STOP);
 
@@ -234,12 +232,10 @@ void setup() {
     servo[i].servoObject.attach(SERVOESC_PIN);
   }
 
-  WiFi.begin(updater_ssid, updater_password);
-  WiFi.mode(WIFI_STA);
-  //WiFi.mode(WIFI_AP_STA);   // New addition for OTA
   WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
   WiFi.softAP(ssid, password);
+  WiFi.begin(updater_ssid, updater_password);
   
   // start the server listening
   server.begin();
@@ -351,16 +347,17 @@ void processCommand(String command) {
     int function2 =  iGetToken(command);
     bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
 
-    if(function2 == SETUP_USERNAME) {
-      String str =  sGetToken(command);
-      writeEEPROMToken(USERNAME_TOKEN_ADDR, str, USERNAME_TOKEN_LENGTH);
-    } else if(function2 == SETUP_WIFI) {
+    if(function2 == SETUP_EEPROM) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
-      if(function3 == SETUP_WIFI_SSID) {
+      if(function3 == SETUP_EEPROM_SSID) {
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
-      } else if(function3 == SETUP_WIFI_PW) {
+      } else if(function3 == SETUP_EEPROM_PW) {
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
+      } else if(function3 == SETUP_EEPROM_UPDATER_SSID) {
+        writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
+      } else if(function3 == SETUP_EEPROM_UPDATER_PW) {
+        writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
@@ -505,9 +502,9 @@ void loop() {
 
 void drawMotorVisuals() {
   uint16_t leftMotorPixels = (leftMotorSpeed / 4.16);
-  display.drawRect(getDisplayX(62), getDisplayY((leftMotorDir == 2)?(24 - leftMotorPixels):(24)),2 , leftMotorPixels);
+  display.drawRect(getDisplayX(0), getDisplayY((leftMotorDir == 2)?(24 - leftMotorPixels):(24)),2 , leftMotorPixels);
   uint16_t rightMotorPixels = (rightMotorSpeed / 4.16);
-  display.drawRect(getDisplayX(0), getDisplayY((rightMotorDir == 1)?(24 - rightMotorPixels):(24)),2 , rightMotorPixels);
+  display.drawRect(getDisplayX(62), getDisplayY((rightMotorDir == 1)?(24 - rightMotorPixels):(24)),2 , rightMotorPixels);
 }
 
 void WeaponDrive(int servoNum, uint8_t percent) {
