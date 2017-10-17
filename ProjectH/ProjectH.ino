@@ -34,7 +34,9 @@ char *password;
 char *updater_ssid;
 char *updater_password;
 
-const char *ota_hostname = "ProjectH";
+char *ota_hostname = "ProjectH";
+
+String username;
 
 const uint64_t LOADING_CIRCLE_TIME  = 1000;
 const uint64_t CHECKMARK_TIME       = 1000;
@@ -72,14 +74,17 @@ const uint32_t  UPDATER_SSID_TOKEN_LENGTH   = 0x020;
 const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
 const String    UPDATER_PW_TOKEN_DEFAULT    = "projecthup";
 const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
+const uint32_t  USERNAME_TOKEN_ADDR         = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
+const uint32_t  USERNAME_TOKEN_LENGTH       = 0x010;
 
 #define COMMAND_START 999
 #define SETUP_FUNCTION 1
+#define SETUP_USERNAME 4
 #define SETUP_WIFI 5
 #define SETUP_WIFI_SSID "SOFT_AP_SSID"
 #define SETUP_WIFI_PW "SOFT_AP_PW"
 #define SETUP_RESET 6
-#define REBOOT_FUNCTION 2
+#define SETUP_REBOOT 7
 #define HEARTBEAT_FUNCTION 3
 #define MOTOR_FUNCTION 5
 #define MOTOR_LEFT 1
@@ -210,6 +215,8 @@ void setup() {
     temp.toCharArray(updater_ssid, temp.length());
     temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
     temp.toCharArray(updater_password, temp.length());
+    temp = readEEPROMToken(USERNAME_TOKEN_ADDR, USERNAME_TOKEN_LENGTH);
+    temp.toCharArray(username, temp.length());
   } else {
     setupRequired = true;
     SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_DEFAULT.length());
@@ -344,7 +351,10 @@ void processCommand(String command) {
     int function2 =  iGetToken(command);
     bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
 
-    if(function2 == SETUP_WIFI) {
+    if(function2 == SETUP_USERNAME) {
+      String str =  sGetToken(command);
+      writeEEPROMToken(USERNAME_TOKEN_ADDR, str, USERNAME_TOKEN_LENGTH);
+    } else if(function2 == SETUP_WIFI) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
       if(function3 == SETUP_WIFI_SSID) {
@@ -354,9 +364,9 @@ void processCommand(String command) {
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
+    } else if(function2 == SETUP_REBOOT) {
+      ESP.restart();
     }
-  } else if(function == REBOOT_FUNCTION) {
-    ESP.restart();
   } else if(function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
   } else if(function == MOTOR_FUNCTION) {
