@@ -27,13 +27,13 @@ IPAddress ipClient(192, 168, 1, 205);
 IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
-const uint64_t LOADING_CIRCLE_TIME  = 1000;
-const uint64_t CHECKMARK_TIME       = 1000;
-const uint64_t HEARTBEAT_TIME       = 900;
+const uint64_t LOADING_CIRCLE_TIME = 1000;
+const uint64_t CHECKMARK_TIME      = 1000;
+const uint64_t HEARTBEAT_TIME      = 900;
 
-const float LOADING_CIRCLE_CONST    = (LOADING_CIRCLE_TIME / 8000.0);
-const float CHECKMARK_CONST         = (CHECKMARK_TIME / 8000.0);
-const float HEARTBEAT_CONST         = (HEARTBEAT_TIME / 8000.0);
+const float LOADING_CIRCLE_CONST = (LOADING_CIRCLE_TIME / 8000.0);
+const float CHECKMARK_CONST      = (CHECKMARK_TIME / 8000.0);
+const float HEARTBEAT_CONST      = (HEARTBEAT_TIME / 8000.0);
 
 /*
   The input to the Anduino is as follows.
@@ -42,46 +42,46 @@ const float HEARTBEAT_CONST         = (HEARTBEAT_TIME / 8000.0);
   Ending with one byte #10 - Also know as <lf> or /n or char #10 (These are the same. ).
 */
 
-const uint32_t  START_TOKEN_ADDR            = 0x000;
-const String    START_TOKEN                 = "AUSTIN_TIM";
-const uint32_t  START_TOKEN_LENGTH          = 0x010;
-const uint32_t  SERIES_TOKEN_ADDR           = START_TOKEN_ADDR + START_TOKEN_LENGTH;
-const String    SERIES_TOKEN                = "PROJECTH";
-const uint32_t  SERIES_TOKEN_LENGTH         = 0x010;
-const uint32_t  PROJECT_TOKEN_ADDR          = SERIES_TOKEN_ADDR + SERIES_TOKEN_LENGTH;
-const String    PROJECT_TOKEN               = "REMOTECAR";
-const uint32_t  PROJECT_TOKEN_LENGTH        = 0x010;
-const uint32_t  SSID_TOKEN_ADDR             = PROJECT_TOKEN_ADDR + PROJECT_TOKEN_LENGTH;
-const String    SSID_TOKEN_DEFAULT          = "projecth000";
-const uint32_t  SSID_TOKEN_LENGTH           = 0x020;
-const uint32_t  PW_TOKEN_ADDR               = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
-const String    PW_TOKEN_DEFAULT            = "projecth";
-const uint32_t  PW_TOKEN_LENGTH             = 0x020;
-const uint32_t  UPDATER_SSID_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
-const String    UPDATER_SSID_TOKEN_DEFAULT  = "TimAustinUpdater";
-const uint32_t  UPDATER_SSID_TOKEN_LENGTH   = 0x020;
-const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
-const String    UPDATER_PW_TOKEN_DEFAULT    = "projecthup";
-const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
-const uint32_t  USERNAME_TOKEN_ADDR         = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
-const uint32_t  USERNAME_TOKEN_LENGTH       = 0x010;
-const uint32_t  FULL_EEPROM_USE             = USERNAME_TOKEN_ADDR + USERNAME_TOKEN_LENGTH;
+const uint32_t  START_TOKEN_ADDR           = 0x000;
+const String    START_TOKEN                = "AUSTIN_TIM";
+const uint32_t  START_TOKEN_LENGTH         = 0x010;
+const uint32_t  SERIES_TOKEN_ADDR          = START_TOKEN_ADDR + START_TOKEN_LENGTH;
+const String    SERIES_TOKEN               = "PROJECTH";
+const uint32_t  SERIES_TOKEN_LENGTH        = 0x010;
+const uint32_t  PROJECT_TOKEN_ADDR         = SERIES_TOKEN_ADDR + SERIES_TOKEN_LENGTH;
+const String    PROJECT_TOKEN              = "REMOTECAR";
+const uint32_t  PROJECT_TOKEN_LENGTH       = 0x010;
+const uint32_t  SSID_TOKEN_ADDR            = PROJECT_TOKEN_ADDR + PROJECT_TOKEN_LENGTH;
+const String    SSID_TOKEN_DEFAULT         = "projecth000";
+const uint32_t  SSID_TOKEN_LENGTH          = 0x020;
+const uint32_t  PW_TOKEN_ADDR              = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
+const String    PW_TOKEN_DEFAULT           = "projecth";
+const uint32_t  PW_TOKEN_LENGTH            = 0x020;
+const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
+const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
+const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
+const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
+const uint32_t  USERNAME_TOKEN_ADDR        = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
+const uint32_t  USERNAME_TOKEN_LENGTH      = 0x010;
+const uint32_t  FULL_EEPROM_USE            = USERNAME_TOKEN_ADDR + USERNAME_TOKEN_LENGTH;
 
-#define COMMAND_START 999
-#define SETUP_FUNCTION 1
-#define SETUP_USERNAME 4
-#define SETUP_EEPROM 5
-#define SETUP_EEPROM_SSID "SOFT_AP_SSID"
-#define SETUP_EEPROM_PW "SOFT_AP_PW"
+#define COMMAND_START             999
+#define SETUP_FUNCTION            1
+#define SETUP_USERNAME            4
+#define SETUP_EEPROM              5
+#define SETUP_EEPROM_SSID         "SOFT_AP_SSID"
+#define SETUP_EEPROM_PW           "SOFT_AP_PW"
 #define SETUP_EEPROM_UPDATER_SSID "SOFT_AP_SSID"
-#define SETUP_EEPROM_UPDATER_PW "SOFT_AP_PW"
-#define SETUP_RESET 6
-#define SETUP_REBOOT 7
-#define HEARTBEAT_FUNCTION 3
-#define MOTOR_FUNCTION 5
-#define MOTOR_LEFT 1
-#define MOTOR_RIGHT 2
-#define SERVO_FUNCTION 6
+#define SETUP_EEPROM_UPDATER_PW   "SOFT_AP_PW"
+#define SETUP_RESET               6
+#define SETUP_REBOOT              7
+#define HEARTBEAT_FUNCTION        3
+#define MOTOR_FUNCTION            5
+#define MOTOR_LEFT                1
+#define MOTOR_RIGHT               2
+#define SERVO_FUNCTION            6
 
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
 
@@ -209,18 +209,26 @@ void setup() {
   while(!Serial);
 
   EEPROM.begin(FULL_EEPROM_USE);
-  if((readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) == START_TOKEN) && (readEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN_LENGTH) == SERIES_TOKEN) && (readEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN_LENGTH) == PROJECT_TOKEN)) {
-    readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH).toCharArray(ssid, SSID_TOKEN_LENGTH);
-    readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH).toCharArray(password, PW_TOKEN_LENGTH);
-    readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH).toCharArray(updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
-    readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
-  } else {
+  if(readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
+    writeEEPROMToken(START_TOKEN_ADDR, START_TOKEN, START_TOKEN_LENGTH);
+    writeEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN, SERIES_TOKEN_LENGTH);
+    writeEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN, PROJECT_TOKEN_LENGTH);
+    writeEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_DEFAULT, SSID_TOKEN_LENGTH);
+    writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
+    writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
+    writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
     setupRequired = true;
+  } else {
+    writeEEPROMToken(START_TOKEN_ADDR, START_TOKEN, START_TOKEN_LENGTH);
     SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_LENGTH);
     PW_TOKEN_DEFAULT.toCharArray(password, PW_TOKEN_LENGTH);
     UPDATER_SSID_TOKEN_DEFAULT.toCharArray(updater_ssid, SSID_TOKEN_LENGTH);
     UPDATER_PW_TOKEN_DEFAULT.toCharArray(updater_ssid, PW_TOKEN_LENGTH);
   }
+  readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH).toCharArray(ssid, SSID_TOKEN_LENGTH);
+  readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH).toCharArray(password, PW_TOKEN_LENGTH);
+  readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH).toCharArray(updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
+  readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
   EEPROM.end();
   
   leftMotor.setmotor(_STOP);
@@ -287,6 +295,15 @@ void setup() {
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
+  Serial.println();
+  Serial.print("SSID: ");
+  Serial.println(ssid);
+  Serial.print("Password: ");
+  Serial.println(password);
+  Serial.print("Updater SSID: ");
+  Serial.println(updater_ssid);
+  Serial.print("Updater Password: ");
+  Serial.println(updater_password);
 
   /*
     myservo.write(50);
@@ -313,9 +330,9 @@ String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
   return str;
 }
 
-bool writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
+void writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
   uint32_t length = _min(str.length(), maxSize - 1);
-  for(uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str[i]);
+  for(uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str.charAt(i));
   EEPROM.write(addr + length, 0x00);
 }
 
