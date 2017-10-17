@@ -28,11 +28,11 @@ IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 /* Set these to your desired credentials. */
-String ssid;
-String password;
+char *ssid;
+char *password;
 
-const char *updater_ssid = "TimAustinUpdater";
-const char *updater_password = "projecthup";
+char *updater_ssid;
+char *updater_password;
 
 const char *ota_hostname = "ProjectH";
 
@@ -68,10 +68,10 @@ const String    PW_TOKEN_DEFAULT            = "projecth";
 const uint32_t  PW_TOKEN_LENGTH             = 0x020;
 const uint32_t  UPDATER_SSID_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
 const String    UPDATER_SSID_TOKEN_DEFAULT  = "TimAustinUpdater";
-const uint32_t  UPDATER_SSID_LENGTH         = 0x020;
-const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_LENGTH;
+const uint32_t  UPDATER_SSID_TOKEN_LENGTH   = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_ADDR       = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
 const String    UPDATER_PW_TOKEN            = "projecthup";
-const uint32_t  UPDATER_PW_LENGTH           = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_LENGTH     = 0x020;
 
 #define COMMAND_START 999
 #define SETUP_FUNCTION 1
@@ -239,7 +239,7 @@ void setup() {
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     display.clear();
-    display.drawProgressBar(31, 40, 64, 10, (progress / (total / 100)));
+    display.drawProgressBar(32, 40, 63, 7, (progress / (total / 100)));
 
     display.display();
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
