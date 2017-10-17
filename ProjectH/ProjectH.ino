@@ -277,10 +277,10 @@ void setup() {
   client = server.available();
 }
 
-String readEEPROMToken(uint32_t addr) {
+String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
   String str;
   char temp;
-  while(true) {
+  while(sizeof(str) < maxLength) {
     temp = EEPROM.read(addr++);
     if(!temp) break;
     str += temp;
@@ -288,9 +288,10 @@ String readEEPROMToken(uint32_t addr) {
   return str;
 }
 
-void writeEEPROMToken(uint32_t addr, String str) {
-  for(uint32_t i = addr; i < sizeof(str); i++) EEPROM.write(i, str[i]);
-  EEPROM.write(addr + sizeof(str), 0x00);
+bool writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
+  uint32_t length = _min(sizeof(str), maxSize - 1);
+  for(uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str[i]);
+  EEPROM.write(addr + length, 0x00);
 }
 
 String sGetToken(String &str) {
@@ -321,16 +322,16 @@ void processCommand(String command) {
     int function2 =  iGetToken(command);
     bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
 
-    if(function2 == SETUP_WIFI_FUNCTION2) {
+    if(function2 == SETUP_WIFI) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
-      if(function3 == SETUP_WIFI_SSID_FUNCTION3) {
-        writeEEPROMToken(SSID_TOKEN_ADDR, str);
-      } else if(function3 == SETUP_WIFI_PW_FUNCTION3) {
-        writeEEPROMToken(PW_TOKEN_ADDR, str);
+      if(function3 == SETUP_WIFI_SSID) {
+        writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
+      } else if(function3 == SETUP_WIFI_PW) {
+        writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
       }
-    } else if (function2 == SETUP_RESET_FUNCTION2) {
-      writeEEPROMToken(START_TOKEN_ADDR, "\0");
+    } else if (function2 == SETUP_RESET) {
+      writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
       ESP.restart();
     }
   } else if(function == HEARTBEAT_FUNCTION) {
