@@ -222,6 +222,7 @@ void setup() {
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
+    Serial.println("Setup required");
     setupRequired = true;
   }
   String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
@@ -532,9 +533,10 @@ void loop() {
   }
 
   display.clear();
-  display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(getDisplayX(32), getDisplayY(0), display_text);
+  display.drawString(getDisplayX(31), getDisplayY(0), display_text);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(getDisplayX(2), getDisplayY(34), String(ssid).substring(8));
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
