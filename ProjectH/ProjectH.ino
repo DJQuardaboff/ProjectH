@@ -63,9 +63,9 @@ const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
 const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
 const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
 const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
-const uint32_t  USERNAME_TOKEN_ADDR        = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
-const uint32_t  USERNAME_TOKEN_LENGTH      = 0x010;
-const uint32_t  FULL_EEPROM_USE            = USERNAME_TOKEN_ADDR + USERNAME_TOKEN_LENGTH;
+const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
+const uint32_t  DISPLAYTEXT_TOKEN_LENGTH   = 0x020;
+const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
 
 #define COMMAND_START             999
 #define SETUP_FUNCTION            1
@@ -75,6 +75,7 @@ const uint32_t  FULL_EEPROM_USE            = USERNAME_TOKEN_ADDR + USERNAME_TOKE
 #define SETUP_EEPROM_PW           "SOFT_AP_PW"
 #define SETUP_EEPROM_UPDATER_SSID "SOFT_AP_SSID"
 #define SETUP_EEPROM_UPDATER_PW   "SOFT_AP_PW"
+#define SETUP_EEPROM_DISPLAYTEXT  "DISPLAYTEXT"
 #define SETUP_RESET               6
 #define SETUP_REBOOT              7
 #define HEARTBEAT_FUNCTION        3
@@ -160,7 +161,7 @@ char *updater_password = new char[UPDATER_PW_TOKEN_LENGTH];
 
 const char *ota_hostname = "ProjectH";
 
-String username;
+char *display_text = new char[DISPLAYTEXT_TOKEN_LENGTH];
 
 typedef struct {
   Servo servoObject;
@@ -218,16 +219,12 @@ void setup() {
     writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
     setupRequired = true;
-  } else {
-    SSID_TOKEN_DEFAULT.toCharArray(ssid, SSID_TOKEN_LENGTH);
-    PW_TOKEN_DEFAULT.toCharArray(password, PW_TOKEN_LENGTH);
-    UPDATER_SSID_TOKEN_DEFAULT.toCharArray(updater_ssid, SSID_TOKEN_LENGTH);
-    UPDATER_PW_TOKEN_DEFAULT.toCharArray(updater_ssid, PW_TOKEN_LENGTH);
   }
   readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH).toCharArray(ssid, SSID_TOKEN_LENGTH);
   readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH).toCharArray(password, PW_TOKEN_LENGTH);
   readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH).toCharArray(updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
   readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
+  readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH).toCharArray(display_text, DISPLAYTEXT_TOKEN_LENGTH);
   EEPROM.end();
   
   leftMotor.setmotor(_STOP);
@@ -374,6 +371,8 @@ void processCommand(String command) {
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
       } else if(function3 == SETUP_EEPROM_UPDATER_PW) {
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
+      } else if(function3 == SETUP_EEPROM_DISPLAYTEXT) {
+        writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, str, DISPLAYTEXT_TOKEN_LENGTH);
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
@@ -508,7 +507,7 @@ void loop() {
   display.clear();
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(getDisplayX(32), getDisplayY(0), "");
+  display.drawString(getDisplayX(32), getDisplayY(0), display_text);
   drawLoadingCircle(32, 23, 14.9, 2, 10);
   drawCheckmark(32, 26, 11, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
