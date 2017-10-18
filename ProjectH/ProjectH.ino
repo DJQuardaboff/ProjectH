@@ -153,15 +153,15 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
   This code is in the public domain.
 */
 
-char *ssid = new char[SSID_TOKEN_LENGTH];
-char *password = new char[PW_TOKEN_LENGTH];
+char *ssid;
+char *password;
 
-char *updater_ssid = new char[UPDATER_SSID_TOKEN_LENGTH];
-char *updater_password = new char[UPDATER_PW_TOKEN_LENGTH];
+char *updater_ssid;
+char *updater_password;
 
 const char *ota_hostname = "ProjectH";
 
-char *display_text = new char[DISPLAYTEXT_TOKEN_LENGTH];
+char *display_text;
 
 typedef struct {
   Servo servoObject;
@@ -208,6 +208,10 @@ const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTER
 void setup() {
   Serial.begin(250000);
   while (!Serial);
+  Serial.println();
+
+  //WiFi.disconnect();
+  //WiFi.softAPdisconnect();
 
   EEPROM.begin(FULL_EEPROM_USE);
   if (readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
@@ -220,11 +224,21 @@ void setup() {
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
     setupRequired = true;
   }
-  readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH).toCharArray(ssid, SSID_TOKEN_LENGTH);
-  readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH).toCharArray(password, PW_TOKEN_LENGTH);
-  readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH).toCharArray(updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
-  readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
-  readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH).toCharArray(display_text, DISPLAYTEXT_TOKEN_LENGTH);
+  String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
+  ssid = new char[temp.length() + 1];
+  temp.toCharArray(ssid, temp.length() + 1);
+  temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
+  password = new char[temp.length() + 1];
+  temp.toCharArray(password, temp.length() + 1);
+  temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
+  updater_ssid = new char[temp.length() + 1];
+  temp.toCharArray(updater_ssid, temp.length() + 1);
+  temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
+  updater_password = new char[temp.length() + 1];
+  temp.toCharArray(updater_password, temp.length() + 1);
+  temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
+  display_text = new char[temp.length() + 1];
+  temp.toCharArray(display_text, temp.length() + 1);
   EEPROM.end();
 
   leftMotor.setmotor(_STOP);
@@ -232,9 +246,11 @@ void setup() {
 
   pinMode(LED_BUILTIN, OUTPUT);
 
-  for (uint8_t i = 0; i < servoNum; i++) {
-    servo[i].servoObject.attach(SERVOESC_PIN);
-  }
+  /*
+    for (uint8_t i = 0; i < servoNum; i++) {
+      servo[i].servoObject.attach(SERVOESC_PIN);
+    }
+  */
 
   WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
@@ -314,6 +330,7 @@ void setup() {
   display.clear();
 
   client = server.available();
+  if (client && client.connected()) Serial.println("Client has connected1");
   digitalWrite(LED_BUILTIN, LOW);
 }
 
@@ -474,6 +491,7 @@ void loop() {
 
   if (client) {
     if (client.connected()) {
+      if (!clientConnected) Serial.println("Client has connected2");
       clientConnected = true;
       connecting = false;
       disconnected = false;
@@ -485,21 +503,28 @@ void loop() {
         processCommand(command);
       }
     } else {
+      if (clientConnected) Serial.println("Client has disconnected1");
       clientConnected = false;
       connecting = true;
       disconnected = true;
       lastLoadingCircle = 0;
       client.stop();
       client = server.available();
-      sClientIn = "";   // a string to hold incoming data
-      //      Serial.println("client disonnected");
+      if (client && client.connected()) {
+        Serial.println("Client has connected3");
+        clientConnected = true;
+        connecting = false;
+        sClientIn = "";   // a string to hold incoming data
+      }
     }
   } else {
+    if (clientConnected) Serial.println("Client has disconnected2");
     clientConnected = false;
     connecting = true;
     disconnected = false;
     client = server.available();
-    if (client) {
+    if (client && client.connected()) {
+      Serial.println("Client has connected4");
       clientConnected = true;
       connecting = false;
       sClientIn = "";   // a string to hold incoming data
