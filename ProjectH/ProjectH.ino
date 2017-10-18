@@ -1,11 +1,11 @@
 /*
- * Arduino program for controlling a Battle Robot using 2 L298N H Bridge Chip and a Weapon using an ESC.
- * This is updated for the NodeMCU
- * Version 3
- * 8/27/2017 - Adding heartbeat
- * 9/12/2017 - Adding OTA from Austin
- */
- 
+   Arduino program for controlling a Battle Robot using 2 L298N H Bridge Chip and a Weapon using an ESC.
+   This is updated for the NodeMCU
+   Version 3
+   8/27/2017 - Adding heartbeat
+   9/12/2017 - Adding OTA from Austin
+*/
+
 #include <EEPROM.h>
 #include <ArduinoOTA.h>
 #include <Servo.h>
@@ -207,10 +207,10 @@ const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTER
 
 void setup() {
   Serial.begin(250000);
-  while(!Serial);
+  while (!Serial);
 
   EEPROM.begin(FULL_EEPROM_USE);
-  if(readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
+  if (readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
     writeEEPROMToken(START_TOKEN_ADDR, START_TOKEN, START_TOKEN_LENGTH);
     writeEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN, SERIES_TOKEN_LENGTH);
     writeEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN, PROJECT_TOKEN_LENGTH);
@@ -226,13 +226,13 @@ void setup() {
   readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH).toCharArray(updater_password, UPDATER_PW_TOKEN_LENGTH);
   readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH).toCharArray(display_text, DISPLAYTEXT_TOKEN_LENGTH);
   EEPROM.end();
-  
+
   leftMotor.setmotor(_STOP);
   rightMotor.setmotor(_STOP);
 
   pinMode(LED_BUILTIN, OUTPUT);
 
-  for(uint8_t i = 0; i < servoNum; i++) {
+  for (uint8_t i = 0; i < servoNum; i++) {
     servo[i].servoObject.attach(SERVOESC_PIN);
   }
 
@@ -240,7 +240,7 @@ void setup() {
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
   WiFi.softAP(ssid, password);
   WiFi.begin(updater_ssid, updater_password);
-  
+
   // start the server listening
   server.begin();
   // you're connected now, so print out the status:
@@ -287,7 +287,7 @@ void setup() {
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  
+
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
@@ -310,17 +310,19 @@ void setup() {
 
   display.init();
   display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
   display.clear();
 
   client = server.available();
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
   String str;
   char temp;
-  while(str.length() < maxLength) {
+  while (str.length() < maxLength) {
     temp = EEPROM.read(addr++);
-    if(!temp) break;
+    if (!temp) break;
     str += temp;
   }
   return str;
@@ -328,7 +330,7 @@ String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
 
 void writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
   uint32_t length = _min(str.length(), maxSize - 1);
-  for(uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str.charAt(i));
+  for (uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str.charAt(i));
   EEPROM.write(addr + length, 0x00);
 }
 
@@ -350,43 +352,43 @@ int iGetToken(String &str) {
 }
 
 void processCommand(String command) {
-  if(iGetToken(command) != COMMAND_START) return; // Be sure the input starts with 999
+  if (iGetToken(command) != COMMAND_START) return; // Be sure the input starts with 999
 
   int function = iGetToken(command);
   //Serial.print("functionNumber: ");
   //Serial.println(function);
 
-  if(function == SETUP_FUNCTION) {
+  if (function == SETUP_FUNCTION) {
     int function2 =  iGetToken(command);
     bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
 
-    if(function2 == SETUP_EEPROM) {
+    if (function2 == SETUP_EEPROM) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
-      if(function3 == SETUP_EEPROM_SSID) {
+      if (function3 == SETUP_EEPROM_SSID) {
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
-      } else if(function3 == SETUP_EEPROM_PW) {
+      } else if (function3 == SETUP_EEPROM_PW) {
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
-      } else if(function3 == SETUP_EEPROM_UPDATER_SSID) {
+      } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
-      } else if(function3 == SETUP_EEPROM_UPDATER_PW) {
+      } else if (function3 == SETUP_EEPROM_UPDATER_PW) {
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
-      } else if(function3 == SETUP_EEPROM_DISPLAYTEXT) {
+      } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
         writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, str, DISPLAYTEXT_TOKEN_LENGTH);
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
-    } else if(function2 == SETUP_REBOOT) {
+    } else if (function2 == SETUP_REBOOT) {
       ESP.restart();
     }
-  } else if(function == HEARTBEAT_FUNCTION) {
+  } else if (function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
-  } else if(function == MOTOR_FUNCTION) {
+  } else if (function == MOTOR_FUNCTION) {
     int motorNum = iGetToken(command);
     int motorDirection = iGetToken(command);
     int motorPower = iGetToken(command);
 
-    if(motorNum == MOTOR_LEFT) {
+    if (motorNum == MOTOR_LEFT) {
       //Serial.println("Received command for Motor Number 1");
       leftMotorChanged = true;
       leftMotorDir = motorDirection;
@@ -397,11 +399,11 @@ void processCommand(String command) {
       rightMotorDir = motorDirection;
       rightMotorSpeed = motorPower;
     }
-  } else if(function == SERVO_FUNCTION) {
+  } else if (function == SERVO_FUNCTION) {
     int servoIndex = iGetToken(command);
     int servoPosition = iGetToken(command);
 
-    if(servoIndex < servoNum) {
+    if (servoIndex < servoNum) {
       servo[servoIndex].position = servoPosition;
       servo[servoIndex].changed = true;
     }
@@ -410,9 +412,9 @@ void processCommand(String command) {
 
 int readClientRetEOFPos() {
   //  loop to read multiple
-  while(client.available() > 0) {
+  while (client.available() > 0) {
     char c = client.read();
-    if(c > 0) sClientIn += c; else break;
+    if (c > 0) sClientIn += c; else break;
   }
 
   int EOFPos = sClientIn.indexOf(char(10));
@@ -423,7 +425,7 @@ int readClientRetEOFPos() {
 
 void checkHeartbeatTimeout() {
   // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
-  if((lastHeartbeat > HEARTBEAT_TIMEOUT)) {
+  if ((lastHeartbeat > HEARTBEAT_TIMEOUT)) {
     //Serial.print("Heartbeat Lost. Motor shutdown");
     leftMotorDir = 1;
     leftMotorSpeed = 0;
@@ -434,24 +436,24 @@ void checkHeartbeatTimeout() {
     rightMotorChanged = true;
 
     /* this would move the servos
-    for(uint16_t i; i < servoNum; i++) {
-      servo[i].position = 0;
-      servo[i].changed = true;
-    }
+      for(uint16_t i; i < servoNum; i++) {
+        servo[i].position = 0;
+        servo[i].changed = true;
+      }
     */
   }
 }
 
 void checkLedBlinkTimeout() {
-  if(lastLedChange >= LED_BLINK_TIMEOUT) {
+  if (lastLedChange >= LED_BLINK_TIMEOUT) {
     lastLedChange -= LED_BLINK_TIMEOUT;
     ledOn = !ledOn;
-    digitalWrite(LED_BUILTIN, ledOn);
+    //digitalWrite(LED_BUILTIN, ledOn);
   }
 }
 
 void loop() {
-  if(WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
     ArduinoOTA.handle();
   }
   //Serial.print(WiFi.RSSI());
@@ -470,14 +472,14 @@ void loop() {
   motorDrive(MOTOR_RIGHT, rightMotorDir, rightMotorSpeed);
   rightMotorChanged = false;
 
-  if(client) {
-    if(client.connected()) {
+  if (client) {
+    if (client.connected()) {
       clientConnected = true;
       connecting = false;
       disconnected = false;
       int EOFPos = readClientRetEOFPos();
 
-      if(EOFPos > 0) {   // Check that we have something to process
+      if (EOFPos > 0) {  // Check that we have something to process
         command = sClientIn.substring(0, EOFPos);
         sClientIn.remove(0, EOFPos + 1);
         processCommand(command);
@@ -497,7 +499,7 @@ void loop() {
     connecting = true;
     disconnected = false;
     client = server.available();
-    if(client) {
+    if (client) {
       clientConnected = true;
       connecting = false;
       sClientIn = "";   // a string to hold incoming data
@@ -517,13 +519,13 @@ void loop() {
 
 void drawMotorVisuals() {
   uint16_t leftMotorPixels = (leftMotorSpeed / 4.16);
-  display.drawRect(getDisplayX(0), getDisplayY((leftMotorDir == 2)?(24 - leftMotorPixels):(24)),2 , leftMotorPixels);
+  display.drawRect(getDisplayX(0), getDisplayY((leftMotorDir == 2) ? (24 - leftMotorPixels) : (24)), 2 , leftMotorPixels);
   uint16_t rightMotorPixels = (rightMotorSpeed / 4.16);
-  display.drawRect(getDisplayX(62), getDisplayY((rightMotorDir == 1)?(24 - rightMotorPixels):(24)),2 , rightMotorPixels);
+  display.drawRect(getDisplayX(62), getDisplayY((rightMotorDir == 1) ? (24 - rightMotorPixels) : (24)), 2 , rightMotorPixels);
 }
 
 void WeaponDrive(int servoNum, uint8_t percent) {
-  if(servoNum <= 0) return;
+  if (servoNum <= 0) return;
   percent = _min(percent, 100);
   int escDuty = map(percent, 0, 100, 50, 179);
   //if(percent == 0) escDuty = 50; else escDuty = 165;
@@ -544,47 +546,20 @@ void WeaponDrive(int servoNum, uint8_t percent) {
 void motorDrive(int motorNum, int motorDir, int percent) {
   percent = _min(percent, 100);
 
-  //change the percentage range of 0 -> 100 into the PWM range of 0 -> 255 using the map function
-  if (motorNum <= 0) {
-    //Serial.print("Motor Out of Range: ");
-    //Serial.println(motorNum);
-    exit;
-  }
+  if (motorNum <= 0 || motorNum > 2) return;
 
   switch (motorDir) {
-    case 0:  //brake motor
-      //Serial.println("Motor brake");
-      if (motorNum == 1)
-        leftMotor.setmotor(_STOP);
-      if (motorNum == 2)
-        rightMotor.setmotor(_STOP);
+    case _SHORT_BRAKE:
+      if (motorNum == 1) leftMotor.setmotor(_STOP); else if (motorNum == 2) rightMotor.setmotor(_STOP);
       break;
-
-    case 1:  //turn counter-clockwise
-      //Serial.println("turn counter-clockwise");
-
-      if (motorNum == 1) {
-        leftMotor.setmotor( _CCW, percent);
-      }
-
-      if (motorNum == 2) {
-        rightMotor.setmotor( _CCW, percent);
-      }
+    case _CCW:
+      if (motorNum == 1) leftMotor.setmotor( _CCW, percent); else if (motorNum == 2) rightMotor.setmotor( _CCW, percent);
       break;
-    case 2:  //turn clockwise
-      //Serial.println("turn clockwise");
-      if (motorNum == 1)
-        leftMotor.setmotor( _CW, percent);
-      if (motorNum == 2)
-        rightMotor.setmotor( _CW, percent);
+    case _CW:
+      if (motorNum == 1) leftMotor.setmotor( _CW, percent); else if (motorNum == 2) rightMotor.setmotor( _CW, percent);
       break;
-
-    case 3:  //disable/coast
-      //Serial.println("Motor disable/coast");
-      if (motorNum == 1)
-        leftMotor.setmotor(_STANDBY);
-      if (motorNum == 2)
-        rightMotor.setmotor(_STANDBY);
+    case _STOP:
+      if (motorNum == 1) leftMotor.setmotor(_STANDBY); else if (motorNum == 2) rightMotor.setmotor(_STANDBY);
       break;
   }
 }
@@ -598,14 +573,14 @@ uint16_t getDisplayY(int y) {
 }
 
 /*
-void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t percent) {
-  percent = min(percent, 100):
-  uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
-  display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
-  display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
-  display.drawHorizontalLine(getDisplayX(x) + 1, getDisplayY(y), width - 2);
-  display.fillRect(getDisplayX(x), getDisplayY(y) + height - barHeight, width, barHeight);
-}
+  void drawBatteryBar(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint8_t percent) {
+    percent = min(percent, 100):
+    uint16_t barHeight = ((height - 1) * (percent / 100.0)) + 1;
+    display.drawVerticalLine(getDisplayX(x), getDisplayY(y), height - barHeight);
+    display.drawVerticalLine(getDisplayX(x) + width - 1, getDisplayY(y), height - barHeight);
+    display.drawHorizontalLine(getDisplayX(x) + 1, getDisplayY(y), width - 2);
+    display.fillRect(getDisplayX(x), getDisplayY(y) + height - barHeight, width, barHeight);
+  }
 */
 
 void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness, uint16_t length) {
@@ -623,7 +598,7 @@ void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness,
     lastLoadingCircle = (lastLoadingCircle % LOADING_CIRCLE_TIME);
     temp = (lastLoadingCircle % LOADING_CIRCLE_TIME) / ((float)LOADING_CIRCLE_TIME);
   } else return;
-  
+
   temp = (temp < .5) ? (exp(temp / LOADING_CIRCLE_CONST)) : ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - exp((1 - temp) / LOADING_CIRCLE_CONST));
   temp = temp / ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - 1);
   float temp2 = changeResolution(temp, circumference);
