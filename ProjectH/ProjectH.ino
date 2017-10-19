@@ -210,9 +210,6 @@ void setup() {
   while (!Serial);
   Serial.println();
 
-  //WiFi.disconnect();
-  //WiFi.softAPdisconnect();
-
   EEPROM.begin(FULL_EEPROM_USE);
   if (readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
     writeEEPROMToken(START_TOKEN_ADDR, START_TOKEN, START_TOKEN_LENGTH);
@@ -240,7 +237,7 @@ void setup() {
   temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
   display_text = new char[temp.length() + 1];
   temp.toCharArray(display_text, temp.length() + 1);
-  EEPROM.end();
+  EEPROM.commit();
 
   leftMotor.setmotor(_STOP);
   rightMotor.setmotor(_STOP);
@@ -255,8 +252,9 @@ void setup() {
 
   WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
-  WiFi.softAP(ssid, password);
   WiFi.begin(updater_ssid, updater_password);
+  WiFi.softAP(ssid, password);
+  WiFi.mode(WIFI_AP_STA);
 
   // start the server listening
   server.begin();
@@ -332,7 +330,7 @@ void setup() {
 
   client = server.available();
   if (client && client.connected()) Serial.println("Client has connected1");
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
@@ -384,18 +382,37 @@ void processCommand(String command) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
       if (function3 == SETUP_EEPROM_SSID) {
+        Serial.print("SSID changed to: ");
+        Serial.println(str);
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
+        EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_PW) {
+        Serial.print("Password changed to: ");
+        Serial.println(str);
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
+        EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
+        Serial.print("Updater SSID changed to: ");
+        Serial.println(str);
+        if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
+        EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_UPDATER_PW) {
+        Serial.print("Updater password changed to: ");
+        Serial.println(str);
+        if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
+        EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
+        Serial.print("Display text changed to: ");
+        Serial.println(str);
+        str.toCharArray(display_text, str.length() + 1);
         writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, str, DISPLAYTEXT_TOKEN_LENGTH);
+        EEPROM.commit();
       }
     } else if (function2 == SETUP_RESET) {
       writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
+      EEPROM.commit();
     } else if (function2 == SETUP_REBOOT) {
       ESP.restart();
     }
@@ -492,40 +509,43 @@ void loop() {
 
   if (client) {
     if (client.connected()) {
-      if (!clientConnected) Serial.println("Client has connected2");
+      //if (!clientConnected) Serial.println("Client has connected2");
+      if (!clientConnected) lastCheckmark = 0;
       clientConnected = true;
       connecting = false;
       disconnected = false;
       int EOFPos = readClientRetEOFPos();
-
       if (EOFPos > 0) {  // Check that we have something to process
         command = sClientIn.substring(0, EOFPos);
         sClientIn.remove(0, EOFPos + 1);
+        client.print(String(command + '\n'));
         processCommand(command);
       }
     } else {
-      if (clientConnected) Serial.println("Client has disconnected1");
+      //if (clientConnected) Serial.println("Client has disconnected1");
+      if (clientConnected) lastLoadingCircle = 0;
       clientConnected = false;
       connecting = true;
       disconnected = true;
-      lastLoadingCircle = 0;
       client.stop();
       client = server.available();
       if (client && client.connected()) {
-        Serial.println("Client has connected3");
+        //Serial.println("Client has connected3");
+        lastCheckmark = 0;
         clientConnected = true;
         connecting = false;
         sClientIn = "";   // a string to hold incoming data
       }
     }
   } else {
-    if (clientConnected) Serial.println("Client has disconnected2");
+    //if (clientConnected) Serial.println("Client has disconnected2");
     clientConnected = false;
     connecting = true;
     disconnected = false;
     client = server.available();
     if (client && client.connected()) {
-      Serial.println("Client has connected4");
+      //Serial.println("Client has connected4");
+      lastCheckmark = 0;
       clientConnected = true;
       connecting = false;
       sClientIn = "";   // a string to hold incoming data
@@ -536,9 +556,9 @@ void loop() {
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(getDisplayX(31), getDisplayY(0), display_text);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(getDisplayX(2), getDisplayY(34), String(ssid).substring(8));
-  drawLoadingCircle(32, 23, 14.9, 2, 10);
-  drawCheckmark(32, 26, 11, 3);
+  display.drawString(getDisplayX(3), getDisplayY(34), String(ssid).substring(8));
+  drawLoadingCircle(32, 25, 13, 2, 10);
+  drawCheckmark(32, 28, 9, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
   drawMotorVisuals();
   display.display();
@@ -655,15 +675,15 @@ void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
 }
 
 void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t dotSize) {
-  uint16_t phaseNum = ((width - dotSize) * 2) - 1;
+  uint16_t phaseNum = ((width - (dotSize - 1)) * 2) - 1;
   float phase = (((lastHeartbeat / (HEARTBEAT_TIME / ((float)phaseNum)))) + dotSize - 1) / ((float)phaseNum);
   phase = (phase < .5) ? (exp(phase / HEARTBEAT_CONST)) : ((exp(.5 / HEARTBEAT_CONST) * 2) - exp((1 - phase) / HEARTBEAT_CONST));
-  phase = ((phase / ((exp(.5 / HEARTBEAT_CONST) * 2) - 1))) * phaseNum;
-  dotSize++;
+  phase = (((phase / ((exp(.5 / HEARTBEAT_CONST) * 2) - 1))) * phaseNum) + 1;
+  //phase++;
   if (phase > phaseNum) phase = phaseNum;
   if (phase >= width) phase = -phase + (width * 2) - 2;
   for (uint16_t i = 0; i < width; i++) {
-    if (i > phase || i < phase - (dotSize - 1)) display.drawVerticalLine(getDisplayX(x) + i, getDisplayY(y), height);
+    if (i > phase || i < phase - dotSize) display.drawVerticalLine(getDisplayX(x) + i, getDisplayY(y), height);
   }
 }
 
