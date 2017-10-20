@@ -7,7 +7,7 @@
 */
 
 #include <EEPROM.h>
-#include <ArduinoOTA.h>
+//#include <ArduinoOTA.h>
 #include <Servo.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -57,13 +57,13 @@ const uint32_t  SSID_TOKEN_LENGTH          = 0x020;
 const uint32_t  PW_TOKEN_ADDR              = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
 const String    PW_TOKEN_DEFAULT           = "projecth";
 const uint32_t  PW_TOKEN_LENGTH            = 0x020;
-const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
-const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
-const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
-const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
-const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
-const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
-const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
+//const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+//const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
+//const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
+//const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
+//const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
+//const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
+const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
 const uint32_t  DISPLAYTEXT_TOKEN_LENGTH   = 0x020;
 const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
 
@@ -159,7 +159,7 @@ char *password;
 char *updater_ssid;
 char *updater_password;
 
-const char *ota_hostname = "ProjectH";
+//const char *ota_hostname = "ProjectH";
 
 char *display_text;
 
@@ -191,11 +191,13 @@ elapsedMillis lastLedChange = 0;
 bool ledOn = false;
 #define LED_BLINK_TIMEOUT 2000     // 1 off / 1 second on
 
+String command;
 bool setupRequired = false;
 String sClientIn = "";         // a string to hold incoming data
 bool connecting = true;
 bool clientConnected = false;
 bool disconnected = false;
+bool lookingForUpdater = true;
 WiFiClient client;
 
 elapsedMillis lastLoadingCircle;
@@ -217,8 +219,8 @@ void setup() {
     writeEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN, PROJECT_TOKEN_LENGTH);
     writeEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_DEFAULT, SSID_TOKEN_LENGTH);
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
-    writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
-    writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
+    //writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
+    //writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
     Serial.println("Setup required");
     setupRequired = true;
   }
@@ -228,12 +230,12 @@ void setup() {
   temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
   password = new char[temp.length() + 1];
   temp.toCharArray(password, temp.length() + 1);
-  temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
-  updater_ssid = new char[temp.length() + 1];
-  temp.toCharArray(updater_ssid, temp.length() + 1);
-  temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
-  updater_password = new char[temp.length() + 1];
-  temp.toCharArray(updater_password, temp.length() + 1);
+  //temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
+  //updater_ssid = new char[temp.length() + 1];
+  //temp.toCharArray(updater_ssid, temp.length() + 1);
+  //temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
+  //updater_password = new char[temp.length() + 1];
+  //temp.toCharArray(updater_password, temp.length() + 1);
   temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
   display_text = new char[temp.length() + 1];
   temp.toCharArray(display_text, temp.length() + 1);
@@ -250,55 +252,52 @@ void setup() {
     }
   */
 
-  WiFi.hostname(ota_hostname);
+  //WiFi.hostname(ota_hostname);
   //WiFi.config(ipClient, gateway, subnet);  // (DNS not required)
-  WiFi.begin(updater_ssid, updater_password);
+  //WiFi.begin(updater_ssid, updater_password);
   WiFi.softAP(ssid, password);
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP);
 
   // start the server listening
   server.begin();
   // you're connected now, so print out the status:
+  /*
+    ArduinoOTA.onStart([]() {
+      //String type;
+      //if (ArduinoOTA.getCommand() == U_FLASH) type = "sketch"; else type = "filesystem";
+      //NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      //Serial.println("Start updating " + type);
+      display.clear();
+      display.display();
+      Serial.println("Start updating ");
+    });
 
-  ArduinoOTA.onStart([]() {
-    /*    String type;
-        if (ArduinoOTA.getCommand() == U_FLASH)
-          type = "sketch";
-        else // U_SPIFFS
-          type = "filesystem";
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    */
-    display.clear();
-    display.display();
-    Serial.println("Start updating ");
-  });
+    ArduinoOTA.onEnd([]() {
+      Serial.println("\nEnd");
+    });
 
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      String progressStr = String(progress / (total / 100)) + '%';
+      display.clear();
+      display.setFont(ArialMT_Plain_10);
+      display.setTextAlignment(TEXT_ALIGN_CENTER);
+      display.drawString(getDisplayX(32), getDisplayY(10), progressStr);
+      display.drawProgressBar(getDisplayX(0), getDisplayX(10), 63, 8, (progress / (total / 100)));
+      display.display();
+      Serial.printf("Progress: %u%%\n", (progress / (total / 100)));
+    });
 
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    String progressStr = String(progress / (total / 100)) + '%';
-    display.clear();
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.drawString(getDisplayX(32), getDisplayY(10), progressStr);
-    display.drawProgressBar(getDisplayX(0), getDisplayX(24), 63, 8, (progress / (total / 100)));
-    display.display();
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
+    ArduinoOTA.onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
 
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-
-  ArduinoOTA.begin();
+    ArduinoOTA.begin();
+  */
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -391,7 +390,7 @@ void processCommand(String command) {
         Serial.println(str);
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
         EEPROM.commit();
-      } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
+      } /*else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
         Serial.print("Updater SSID changed to: ");
         Serial.println(str);
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
@@ -403,7 +402,7 @@ void processCommand(String command) {
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
         EEPROM.commit();
-      } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
+      }*/ else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
         Serial.print("Display text changed to: ");
         Serial.println(str);
         str.toCharArray(display_text, str.length() + 1);
@@ -488,12 +487,13 @@ void checkLedBlinkTimeout() {
 }
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED) {
-    ArduinoOTA.handle();
-  }
-  //Serial.print(WiFi.RSSI());
-  yield();
-  String command = "";
+  /*
+    if (WiFi.status() == WL_CONNECTED) {
+      ArduinoOTA.handle();
+      yield();
+    }
+  */
+  command = "";
 
   checkHeartbeatTimeout();
 
@@ -552,16 +552,18 @@ void loop() {
     }
   }
 
+  yield(); // xxxx
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(getDisplayX(31), getDisplayY(0), display_text);
+  display.drawString(getDisplayX(31), getDisplayY(-3), ssid);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(getDisplayX(3), getDisplayY(34), String(ssid).substring(8));
+  display.drawString(getDisplayX(3), getDisplayY(34), display_text);
   drawLoadingCircle(32, 25, 13, 2, 10);
   drawCheckmark(32, 28, 9, 3);
   drawHeartbeat(46, 46, 15, 2, 2);
   drawMotorVisuals();
   display.display();
+  yield(); // xxxx
 }
 
 void drawMotorVisuals() {
