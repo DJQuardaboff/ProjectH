@@ -39,7 +39,7 @@ const float HEARTBEAT_CONST      = (HEARTBEAT_TIME / 8000.0);
   The input to the Anduino is as follows.
   First Number is the function
   Series of parameters
-  Ending with one byte #10 - Also know as <lf> or /n or char #10 (These are the same. ).
+  Ending with one byte #10 - Also know as <lf> or \n or char #10 (These are the same. ).
 */
 
 const uint32_t  START_TOKEN_ADDR           = 0x000;
@@ -57,13 +57,13 @@ const uint32_t  SSID_TOKEN_LENGTH          = 0x020;
 const uint32_t  PW_TOKEN_ADDR              = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
 const String    PW_TOKEN_DEFAULT           = "projecth";
 const uint32_t  PW_TOKEN_LENGTH            = 0x020;
-//const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
-//const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
-//const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
-//const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
-//const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
-//const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
-const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
+const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
+const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
+const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
+const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
 const uint32_t  DISPLAYTEXT_TOKEN_LENGTH   = 0x020;
 const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
 
@@ -219,8 +219,8 @@ void setup() {
     writeEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN, PROJECT_TOKEN_LENGTH);
     writeEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_DEFAULT, SSID_TOKEN_LENGTH);
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
-    //writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
-    //writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
+    writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
+    writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
     Serial.println("Setup required");
     setupRequired = true;
   }
@@ -230,12 +230,12 @@ void setup() {
   temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
   password = new char[temp.length() + 1];
   temp.toCharArray(password, temp.length() + 1);
-  //temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
-  //updater_ssid = new char[temp.length() + 1];
-  //temp.toCharArray(updater_ssid, temp.length() + 1);
-  //temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
-  //updater_password = new char[temp.length() + 1];
-  //temp.toCharArray(updater_password, temp.length() + 1);
+  temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
+  updater_ssid = new char[temp.length() + 1];
+  temp.toCharArray(updater_ssid, temp.length() + 1);
+  temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
+  updater_password = new char[temp.length() + 1];
+  temp.toCharArray(updater_password, temp.length() + 1);
   temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
   display_text = new char[temp.length() + 1];
   temp.toCharArray(display_text, temp.length() + 1);
@@ -390,7 +390,7 @@ void processCommand(String command) {
         Serial.println(str);
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
         EEPROM.commit();
-      } /*else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
+      } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
         Serial.print("Updater SSID changed to: ");
         Serial.println(str);
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
@@ -402,7 +402,7 @@ void processCommand(String command) {
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
         EEPROM.commit();
-      }*/ else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
+      } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
         Serial.print("Display text changed to: ");
         Serial.println(str);
         str.toCharArray(display_text, str.length() + 1);
@@ -552,7 +552,7 @@ void loop() {
     }
   }
 
-  yield(); // xxxx
+  yield();
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(getDisplayX(31), getDisplayY(-3), ssid);
@@ -563,7 +563,7 @@ void loop() {
   drawHeartbeat(46, 46, 15, 2, 2);
   drawMotorVisuals();
   display.display();
-  yield(); // xxxx
+  yield();
 }
 
 void drawMotorVisuals() {
