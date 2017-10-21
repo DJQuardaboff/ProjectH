@@ -83,6 +83,10 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
 #define MOTOR_RIGHT               2
 #define SERVO_FUNCTION            6
 
+#define REPLY_START               888
+#define ERROR_FUNCTION            1
+#define ERROR_SHORTPASSWORD(s)    String("Password \'" + s + "\' too short")
+
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
 
 /*
@@ -462,6 +466,10 @@ void checkLedBlinkTimeout() {
     ledOn = !ledOn;
     //digitalWrite(LED_BUILTIN, ledOn);
   }
+}
+
+void sendError(String errorType) {
+  client.print(REPLY_START + ',' + ERROR_FUNCTION + ',' + errorType + '\n');
 }
 
 void loop() {
