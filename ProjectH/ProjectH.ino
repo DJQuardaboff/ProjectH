@@ -69,7 +69,6 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
 
 #define COMMAND_START             999
 #define SETUP_FUNCTION            1
-#define SETUP_USERNAME            4
 #define SETUP_EEPROM              5
 #define SETUP_EEPROM_SSID         "SOFT_AP_SSID"
 #define SETUP_EEPROM_PW           "SOFT_AP_PW"
