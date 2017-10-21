@@ -220,7 +220,6 @@ void setup() {
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
-    Serial.println("Setup required");
     setupRequired = true;
   }
   String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
@@ -298,12 +297,7 @@ void setup() {
     ArduinoOTA.begin();
   */
   Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
+  Serial.println(String("AP IP address: " + WiFi.softAPIP()));
   Serial.println();
   Serial.print("SSID: ");
   Serial.println(ssid);
@@ -314,21 +308,14 @@ void setup() {
   Serial.print("Updater Password: ");
   Serial.println(updater_password);
 
-  /*
-    myservo.write(50);
-    motorDrive(1,2,50);
-    motorDrive(2,2,50);
-    delay(2000);
-  */
-
   display.init();
   display.flipScreenVertically();
   display.setFont(ArialMT_Plain_10);
   display.clear();
 
   client = server.available();
-  if (client && client.connected()) Serial.println("Client has connected1");
-  digitalWrite(LED_BUILTIN, HIGH);
+  //if (client && client.connected()) Serial.println("Client has connected1");
+  digitalWrite(LED_BUILTIN, HIGH); //turn the buit-in led off
 }
 
 String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
@@ -369,9 +356,6 @@ void processCommand(String command) {
   if (iGetToken(command) != COMMAND_START) return; // Be sure the input starts with 999
 
   int function = iGetToken(command);
-  //Serial.print("functionNumber: ");
-  //Serial.println(function);
-
   if (function == SETUP_FUNCTION) {
     int function2 =  iGetToken(command);
     bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
@@ -380,30 +364,25 @@ void processCommand(String command) {
       String function3 =  sGetToken(command);
       String str =  sGetToken(command);
       if (function3 == SETUP_EEPROM_SSID) {
-        Serial.print("SSID changed to: ");
-        Serial.println(str);
+        //Serial.print(String("SSID changed to: " + str));
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_PW) {
-        Serial.print("Password changed to: ");
-        Serial.println(str);
+        //Serial.print(String("Password changed to: " + str));
         writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
-        Serial.print("Updater SSID changed to: ");
-        Serial.println(str);
+        //Serial.print(String("Updater SSID changed to: " + str));
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_UPDATER_PW) {
-        Serial.print("Updater password changed to: ");
-        Serial.println(str);
+        //Serial.print(String("Updater password changed to: " + str));
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
         writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
-        Serial.print("Display text changed to: ");
-        Serial.println(str);
+        //Serial.print(String("Display text changed to: " + str));
         str.toCharArray(display_text, str.length() + 1);
         writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, str, DISPLAYTEXT_TOKEN_LENGTH);
         EEPROM.commit();
