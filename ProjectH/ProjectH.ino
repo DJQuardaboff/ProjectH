@@ -230,12 +230,20 @@ void setup() {
   ssid = new char[temp.length() + 1];
   temp.toCharArray(ssid, temp.length() + 1);
   temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
+  if (temp.length() < 8) {
+    writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
+    temp = PW_TOKEN_DEFAULT;
+  }
   password = new char[temp.length() + 1];
   temp.toCharArray(password, temp.length() + 1);
   temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
   updater_ssid = new char[temp.length() + 1];
   temp.toCharArray(updater_ssid, temp.length() + 1);
   temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
+  if (temp.length() < 8) {
+    writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
+    temp = UPDATER_PW_TOKEN_DEFAULT;
+  }
   updater_password = new char[temp.length() + 1];
   temp.toCharArray(updater_password, temp.length() + 1);
   temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
@@ -372,19 +380,28 @@ void processCommand(String command) {
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_PW) {
-        //Serial.print(String("Password changed to: " + str));
-        writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
-        EEPROM.commit();
+        if (str.length() < 8) {
+          sendError(ERROR_SHORTPASSWORD(str));
+        } else {
+          //Serial.print(String("Password changed to: " + str));
+          writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
+          EEPROM.commit();
+        }
       } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
         //Serial.print(String("Updater SSID changed to: " + str));
         if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
         EEPROM.commit();
       } else if (function3 == SETUP_EEPROM_UPDATER_PW) {
-        //Serial.print(String("Updater password changed to: " + str));
-        if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
-        writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
-        EEPROM.commit();
+        if (str.length() < 8) {
+          sendError(ERROR_SHORTPASSWORD(str));
+          //Serial.println(ERROR_SHORTPASSWORD(str));
+        } else {
+          //Serial.print(String("Updater password changed to: " + str));
+          if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
+          writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
+          EEPROM.commit();
+        }
       } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
         //Serial.print(String("Display text changed to: " + str));
         str.toCharArray(display_text, str.length() + 1);
