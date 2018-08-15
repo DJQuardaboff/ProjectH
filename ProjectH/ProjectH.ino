@@ -22,10 +22,12 @@
 #error "This is here to make sure WEMOS_Motor.cpp has the delays removed from the functions."
 #endif
 
-IPAddress ipClient(192, 168, 1, 205);
+//IPAddress ipClient(192, 168, 1, 205);
 //IPAddress ip(192, 168, 4, 1);
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 255, 0);
+//IPAddress gateway(192, 168, 1, 1);
+//IPAddress subnet(255, 255, 255, 0);
+uint32_t currentClientIP = 0;
+uint16_t currentClientPort = 0;
 
 const uint64_t LOADING_CIRCLE_TIME = 1000;
 const uint64_t CHECKMARK_TIME      = 1000;
@@ -36,45 +38,47 @@ const float CHECKMARK_CONST      = (CHECKMARK_TIME / 8000.0);
 const float HEARTBEAT_CONST      = (HEARTBEAT_TIME / 8000.0);
 
 /*
-  The input to the Anduino is as follows.
+  The input to the Arduino is as follows.
   First Number is the function
   Series of parameters
-  Ending with one byte #10 - Also know as <lf> or \n or char #10 (These are the same. ).
+  Ending with one byte #10 - Also know as <lf> or \n or char #10.
 */
 
-const uint32_t  START_TOKEN_ADDR           = 0x000;
-const String    START_TOKEN                = "AUSTIN_TIM";
-const uint32_t  START_TOKEN_LENGTH         = 0x010;
-const uint32_t  SERIES_TOKEN_ADDR          = START_TOKEN_ADDR + START_TOKEN_LENGTH;
-const String    SERIES_TOKEN               = "PROJECTH";
-const uint32_t  SERIES_TOKEN_LENGTH        = 0x010;
-const uint32_t  PROJECT_TOKEN_ADDR         = SERIES_TOKEN_ADDR + SERIES_TOKEN_LENGTH;
-const String    PROJECT_TOKEN              = "REMOTECAR";
-const uint32_t  PROJECT_TOKEN_LENGTH       = 0x010;
-const uint32_t  SSID_TOKEN_ADDR            = PROJECT_TOKEN_ADDR + PROJECT_TOKEN_LENGTH;
-const String    SSID_TOKEN_DEFAULT         = "projecth000";
-const uint32_t  SSID_TOKEN_LENGTH          = 0x020;
-const uint32_t  PW_TOKEN_ADDR              = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
-const String    PW_TOKEN_DEFAULT           = "projecth";
-const uint32_t  PW_TOKEN_LENGTH            = 0x020;
-const uint32_t  UPDATER_SSID_TOKEN_ADDR    = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
-const String    UPDATER_SSID_TOKEN_DEFAULT = "TimAustinUpdater";
-const uint32_t  UPDATER_SSID_TOKEN_LENGTH  = 0x020;
-const uint32_t  UPDATER_PW_TOKEN_ADDR      = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
-const String    UPDATER_PW_TOKEN_DEFAULT   = "projecthup";
-const uint32_t  UPDATER_PW_TOKEN_LENGTH    = 0x020;
-const uint32_t  DISPLAYTEXT_TOKEN_ADDR     = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
-const uint32_t  DISPLAYTEXT_TOKEN_LENGTH   = 0x020;
-const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
+const uint32_t  START_TOKEN_ADDR             = 0x000;
+const char      START_TOKEN[]                = "AUSTIN_TIM";
+const uint32_t  START_TOKEN_LENGTH           = 0x010;
+const uint32_t  SERIES_TOKEN_ADDR            = START_TOKEN_ADDR + START_TOKEN_LENGTH;
+const char      SERIES_TOKEN[]               = "PROJECTH";
+const uint32_t  SERIES_TOKEN_LENGTH          = 0x010;
+const uint32_t  PROJECT_TOKEN_ADDR           = SERIES_TOKEN_ADDR + SERIES_TOKEN_LENGTH;
+const char      PROJECT_TOKEN[]              = "REMOTECAR";
+const uint32_t  PROJECT_TOKEN_LENGTH         = 0x010;
+const uint32_t  SSID_TOKEN_ADDR              = PROJECT_TOKEN_ADDR + PROJECT_TOKEN_LENGTH;
+const char      SSID_TOKEN_DEFAULT[]         = "projecth000";
+const uint32_t  SSID_TOKEN_LENGTH            = 0x020;
+const uint32_t  PW_TOKEN_ADDR                = SSID_TOKEN_ADDR + SSID_TOKEN_LENGTH;
+const char      PW_TOKEN_DEFAULT[]           = "projecth";
+const uint32_t  PW_TOKEN_LENGTH              = 0x020;
+const uint32_t  UPDATER_SSID_TOKEN_ADDR      = PW_TOKEN_ADDR + PW_TOKEN_LENGTH;
+const char      UPDATER_SSID_TOKEN_DEFAULT[] = "TimAustinUpdater";
+const uint32_t  UPDATER_SSID_TOKEN_LENGTH    = 0x020;
+const uint32_t  UPDATER_PW_TOKEN_ADDR        = UPDATER_SSID_TOKEN_ADDR + UPDATER_SSID_TOKEN_LENGTH;
+const char      UPDATER_PW_TOKEN_DEFAULT[]   = "projecthup";
+const uint32_t  UPDATER_PW_TOKEN_LENGTH      = 0x020;
+const uint32_t  DISPLAYTEXT_TOKEN_ADDR       = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
+const char      DISPLAYTEXT_TOKEN_DEFAULT[]   = "";
+const uint32_t  DISPLAYTEXT_TOKEN_LENGTH     = 0x020;
+const uint32_t  FULL_EEPROM_USE              = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
 
-#define COMMAND_START             999
+const char DELIMITERS[]                = ",\n";
+const char SETUP_EEPROM_SSID[]         = "SOFT_AP_SSID";
+const char SETUP_EEPROM_PW[]           = "SOFT_AP_PW";
+const char SETUP_EEPROM_UPDATER_SSID[] = "SOFT_AP_SSID";
+const char SETUP_EEPROM_UPDATER_PW[]   = "SOFT_AP_PW";
+const char SETUP_EEPROM_DISPLAYTEXT[]  = "DISPLAYTEXT";
+
 #define SETUP_FUNCTION            1
 #define SETUP_EEPROM              5
-#define SETUP_EEPROM_SSID         "SOFT_AP_SSID"
-#define SETUP_EEPROM_PW           "SOFT_AP_PW"
-#define SETUP_EEPROM_UPDATER_SSID "SOFT_AP_SSID"
-#define SETUP_EEPROM_UPDATER_PW   "SOFT_AP_PW"
-#define SETUP_EEPROM_DISPLAYTEXT  "DISPLAYTEXT"
 #define SETUP_RESET               6
 #define SETUP_REBOOT              7
 #define HEARTBEAT_FUNCTION        3
@@ -85,16 +89,17 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
 
 #define REPLY_START               888
 #define ERROR_FUNCTION            1
-#define ERROR_SHORTPASSWORD(s)    String("Password \'" + s + "\' too short")
 
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
+
+#define LED_BLINK_TIMEOUT 2000     // 1 off / 1 second on
 
 /*
   ------------------------------------
   For HEARTBEAT_FUNCTION
   The App will send Heartbeat only
   Example:
-  999,3
+  3
   ---------------------
   For MOTOR_FUNCTION
   The Android will send MotorControl + 3 additional numbers
@@ -114,10 +119,10 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
   100 = 100% of full motor speed
 
   Examples...
-  999,5,1,2,100  // Motor 1 counter clockwise 100%
-  999,5,2,1,50   // Motor 2 clockwise 50%
-  999,5,2,0,0    // Motor 2 allow to coast to a stop
-  999,5,1,3,0    // Motor 1 stop immediately. The last 0 is actually ignored but must be sent
+  5,1,2,100  // Motor 1 counter clockwise 100%
+  5,2,1,50   // Motor 2 clockwise 50%
+  5,2,0,0    // Motor 2 allow to coast to a stop
+  5,1,3,0    // Motor 1 stop immediately. The last 0 is actually ignored but must be sent
 
   From WEMOS_Motor.h
   _SHORT_BRAKE  0
@@ -134,37 +139,21 @@ const uint32_t  FULL_EEPROM_USE            = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEX
   50 = 50% of full motor speed
   100 = 100% of full motor speed
 
-  999,6,1,100  // Weapon on the ESC running 100%
-  999,6,1,0    // Turn off the weapon
-  ------------------------------------
-  For QueryPins
- **** This is not implemented yet
-  20=Query pin assignments made in this program
-
-  The Android program can get the pin assignments from this program. 20 is used as the query command.
-  The Arduino will respond with the pin assigned.
-  The Android will send 3 numbers followed by one byte <lf> or '\n' or char #10 (These are the same). Examples...
-  20,1,24     Send ENA  // Left Motor PWM
-  20,4,24     Send IN1  // Left Motor direction Control
-  20,4,24     Send IN2  // Left Motor direction Control
-  20,4,24     Send IN3  // Right Motor direction Control
-  20,4,24     Send IN4  // Right Motor direction Control
-  20,4,24     Send ENB  // Right Motor PWM
-
-  // Pin on the Arduino going to the ESC for the weapon. This should be the yellow control wire.
+  6,1,100  // Weapon on the ESC running 100%
+  6,1,0    // Turn off the weapon
 
   This code is in the public domain.
 */
 
-char *ssid;
-char *password;
+char ssid[SSID_TOKEN_LENGTH];
+char password[PW_TOKEN_LENGTH];
 
-char *updater_ssid;
-char *updater_password;
+char updater_ssid[UPDATER_SSID_TOKEN_LENGTH];
+char updater_password[UPDATER_PW_TOKEN_LENGTH];
 
 //const char *ota_hostname = "ProjectH";
 
-char *display_text;
+char display_text[DISPLAYTEXT_TOKEN_LENGTH];
 
 typedef struct {
   Servo servoObject;
@@ -173,10 +162,10 @@ typedef struct {
   bool changed;
 } ServoInfo;
 
-WiFiServer server(23);
+WiFiUDP server;
 Motor leftMotor(0x30, _MOTOR_A, 1000);
 Motor rightMotor(0x30, _MOTOR_B, 1000);
-SSD1306  display(0x3c, D2, D1);
+SSD1306 display(0x3c, D2, D1);
 
 uint8_t leftMotorDir = _CW;
 uint8_t leftMotorSpeed = 0;
@@ -192,31 +181,29 @@ uint8_t servoNum;
 // This is using D4
 elapsedMillis lastLedChange = 0;
 bool ledOn = false;
-#define LED_BLINK_TIMEOUT 2000     // 1 off / 1 second on
 
-String command;
 bool setupRequired = false;
-String sClientIn = "";         // a string to hold incoming data
-bool connecting = true;
+const uint16_t SERVER_RX_SIZE = 127;
+char serverRx[SERVER_RX_SIZE + 1];         // a string to hold incoming data
 bool clientConnected = false;
-bool disconnected = false;
 bool lookingForUpdater = true;
-WiFiClient client;
 
 elapsedMillis lastLoadingCircle;
 elapsedMillis lastCheckmark;
-elapsedMillis lastHeartbeat;
+elapsedMillis lastHeartbeat(HEARTBEAT_TIMEOUT + 1);
 
 // Pin on the Arduino going to the ESC for the weapon. This should be the yellow control wire.
 const int SERVOESC_PIN = D4; // THIS IS PIN D2.  CHOSEN BECAUSE IT DOESN'T INTERFERE WITH THE BOOT SEQUENCE ON THE D1
 
 void setup() {
-  Serial.begin(250000);
+  Serial.begin(74880);
   while (!Serial);
   Serial.println();
 
   EEPROM.begin(FULL_EEPROM_USE);
-  if (readEEPROMToken(START_TOKEN_ADDR, START_TOKEN_LENGTH) != START_TOKEN) {
+  char temp2[START_TOKEN_LENGTH];
+  readEEPROMToken(START_TOKEN_ADDR, temp2, START_TOKEN_LENGTH);
+  if (strcmp(temp2, START_TOKEN)) {
     writeEEPROMToken(START_TOKEN_ADDR, START_TOKEN, START_TOKEN_LENGTH);
     writeEEPROMToken(SERIES_TOKEN_ADDR, SERIES_TOKEN, SERIES_TOKEN_LENGTH);
     writeEEPROMToken(PROJECT_TOKEN_ADDR, PROJECT_TOKEN, PROJECT_TOKEN_LENGTH);
@@ -224,31 +211,30 @@ void setup() {
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_DEFAULT, UPDATER_SSID_TOKEN_LENGTH);
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
+    writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_DEFAULT, DISPLAYTEXT_TOKEN_LENGTH);
     setupRequired = true;
   }
-  String temp = readEEPROMToken(SSID_TOKEN_ADDR, SSID_TOKEN_LENGTH);
-  ssid = new char[temp.length() + 1];
-  temp.toCharArray(ssid, temp.length() + 1);
-  temp = readEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_LENGTH);
-  if (temp.length() < 8) {
+  
+  readEEPROMToken(SSID_TOKEN_ADDR, ssid, SSID_TOKEN_LENGTH);
+  
+  readEEPROMToken(PW_TOKEN_ADDR, password, PW_TOKEN_LENGTH);
+  char* password_end = strchr(password, 0);
+  if (!password_end || (password_end - password) < 8) {
     writeEEPROMToken(PW_TOKEN_ADDR, PW_TOKEN_DEFAULT, PW_TOKEN_LENGTH);
-    temp = PW_TOKEN_DEFAULT;
+    strcpy(password, PW_TOKEN_DEFAULT);
   }
-  password = new char[temp.length() + 1];
-  temp.toCharArray(password, temp.length() + 1);
-  temp = readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, UPDATER_SSID_TOKEN_LENGTH);
-  updater_ssid = new char[temp.length() + 1];
-  temp.toCharArray(updater_ssid, temp.length() + 1);
-  temp = readEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_LENGTH);
-  if (temp.length() < 8) {
+  
+  readEEPROMToken(UPDATER_SSID_TOKEN_ADDR, updater_ssid, UPDATER_SSID_TOKEN_LENGTH);
+  
+  readEEPROMToken(UPDATER_PW_TOKEN_ADDR, updater_password, UPDATER_PW_TOKEN_LENGTH);
+  char* updater_password_end = strchr(updater_password, 0);
+  if (!updater_password_end || (updater_password_end - updater_password) < 8) {
     writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, UPDATER_PW_TOKEN_DEFAULT, UPDATER_PW_TOKEN_LENGTH);
-    temp = UPDATER_PW_TOKEN_DEFAULT;
+    strcpy(updater_password, UPDATER_PW_TOKEN_DEFAULT);
   }
-  updater_password = new char[temp.length() + 1];
-  temp.toCharArray(updater_password, temp.length() + 1);
-  temp = readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, DISPLAYTEXT_TOKEN_LENGTH);
-  display_text = new char[temp.length() + 1];
-  temp.toCharArray(display_text, temp.length() + 1);
+  
+  readEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, display_text, DISPLAYTEXT_TOKEN_LENGTH);
+  
   EEPROM.commit();
 
   leftMotor.setmotor(_STOP);
@@ -269,7 +255,7 @@ void setup() {
   WiFi.mode(WIFI_AP);
 
   // start the server listening
-  server.begin();
+  server.begin(23);
   // you're connected now, so print out the status:
   /*
     ArduinoOTA.onStart([]() {
@@ -309,7 +295,8 @@ void setup() {
     ArduinoOTA.begin();
   */
   Serial.println("Ready");
-  Serial.println(String("AP IP address: " + WiFi.softAPIP()));
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
   Serial.println();
   Serial.print("SSID: ");
   Serial.println(ssid);
@@ -319,97 +306,121 @@ void setup() {
   Serial.println(updater_ssid);
   Serial.print("Updater Password: ");
   Serial.println(updater_password);
+  Serial.print("Display text: ");
+  Serial.println(display_text);
 
   display.init();
   display.flipScreenVertically();
   display.setFont(ArialMT_Plain_10);
   display.clear();
 
-  client = server.available();
-  //if (client && client.connected()) Serial.println("Client has connected1");
   digitalWrite(LED_BUILTIN, HIGH); //turn the buit-in led off
 }
 
-String readEEPROMToken(uint32_t addr, uint32_t maxLength) {
-  String str;
-  char temp;
-  while (str.length() < maxLength) {
-    temp = EEPROM.read(addr++);
+void readEEPROMToken(uint32_t addr, char* buffer, uint32_t maxLength) {
+  for (uint16_t i = 0; i < maxLength; i++) {
+    char temp = EEPROM.read(addr++);
+    buffer[i] = temp;
     if (!temp) break;
-    str += temp;
   }
-  return str;
 }
 
-void writeEEPROMToken(uint32_t addr, String str, uint32_t maxSize) {
-  uint32_t length = _min(str.length(), maxSize - 1);
-  for (uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str.charAt(i));
+void writeEEPROMToken(uint32_t addr, const char* str, uint32_t maxLength) {
+  uint32_t length = _min(strlen(str), maxLength - 1);
+  for (uint32_t i = 0; i < length; i++) EEPROM.write(addr + i, str[i]);
   EEPROM.write(addr + length, 0x00);
 }
 
-String sGetToken(String &str) {
-  int index = str.indexOf(',');
-  String token;
-  if (index >= 0) {
-    token = str.substring(0, index);
-    str.remove(0, index + 1);
-  } else {
-    token = str;
-    str = "";
+void nextToken(const char*& str) {
+  str = strchr(str, ',');
+  if (str) str++;
+}
+
+bool getNextTokenStrEquals(const char*& str, const char* expected, bool advanceOnlyIfTrue = false) {
+  if (!str) return false;
+  bool result = false;
+  if (expected) {
+    size_t length = strlen(expected);
+    if (strlen(expected) == strcspn(str, DELIMITERS)) {
+      result = !memcmp(str, expected, length);
+    }
   }
-  return token;
+  if (result || !advanceOnlyIfTrue) {
+    nextToken(str);
+  }
+  return result;
 }
 
-int iGetToken(String &str) {
-  return sGetToken(str).toInt();
+void getNextTokenStr(char* dest, const char*& str, size_t maxSize) {
+  if (!str) return;
+  if (dest) {
+    size_t length = _min(maxSize - 1, strcspn(str, DELIMITERS));
+    memcpy(dest, str, length);
+    dest[length] = 0;
+  }
+  nextToken(str);
 }
 
-void processCommand(String command) {
-  if (iGetToken(command) != COMMAND_START) return; // Be sure the input starts with 999
+int getNextTokenInt(const char*& str) {
+  if (!str) return 0;
+  int result = atoi(str);
+  nextToken(str);
+  return result;
+}
 
-  int function = iGetToken(command);
+void processCommand(const char* command) {
+  const char* currentToken = command;
+  int function = getNextTokenInt(currentToken);
   if (function == SETUP_FUNCTION) {
-    int function2 =  iGetToken(command);
-    bool projectCheck = sGetToken(command) == PROJECT_TOKEN;
-
+    int function2 =  getNextTokenInt(currentToken);
+    bool projectCheck = getNextTokenStrEquals(currentToken, PROJECT_TOKEN);
     if (function2 == SETUP_EEPROM) {
-      String function3 =  sGetToken(command);
-      String str =  sGetToken(command);
-      if (function3 == SETUP_EEPROM_SSID) {
+      if (getNextTokenStrEquals(currentToken, SETUP_EEPROM_SSID, true)) {
+        char str[SSID_TOKEN_LENGTH];
+        getNextTokenStr(str, currentToken, SSID_TOKEN_LENGTH);
         //Serial.print(String("SSID changed to: " + str));
         writeEEPROMToken(SSID_TOKEN_ADDR, str, SSID_TOKEN_LENGTH);
         EEPROM.commit();
-      } else if (function3 == SETUP_EEPROM_PW) {
-        if (str.length() < 8) {
-          sendError(ERROR_SHORTPASSWORD(str));
+      } else if (getNextTokenStrEquals(currentToken, SETUP_EEPROM_PW, true)) {
+        char str[PW_TOKEN_LENGTH];
+        getNextTokenStr(str, currentToken, PW_TOKEN_LENGTH);
+        if (strlen(str) < 8) {
+          //Serial.print(String("Error changing password to: " + str));
+          sendErrorShortPassword(str);
         } else {
           //Serial.print(String("Password changed to: " + str));
           writeEEPROMToken(PW_TOKEN_ADDR, str, PW_TOKEN_LENGTH);
           EEPROM.commit();
         }
-      } else if (function3 == SETUP_EEPROM_UPDATER_SSID) {
+      } else if (getNextTokenStrEquals(currentToken, SETUP_EEPROM_UPDATER_SSID, true)) {
+        char str[UPDATER_SSID_TOKEN_LENGTH];
+        getNextTokenStr(str, currentToken, UPDATER_SSID_TOKEN_LENGTH);
         //Serial.print(String("Updater SSID changed to: " + str));
-        if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_ssid, str.length() + 1);
+        if (WiFi.status() != WL_CONNECTED) strcpy(updater_ssid, str);
         writeEEPROMToken(UPDATER_SSID_TOKEN_ADDR, str, UPDATER_SSID_TOKEN_LENGTH);
         EEPROM.commit();
-      } else if (function3 == SETUP_EEPROM_UPDATER_PW) {
-        if (str.length() < 8) {
-          sendError(ERROR_SHORTPASSWORD(str));
+      } else if (getNextTokenStrEquals(currentToken, SETUP_EEPROM_UPDATER_PW, true)) {
+        char str[UPDATER_PW_TOKEN_LENGTH];
+        getNextTokenStr(str, currentToken, UPDATER_PW_TOKEN_LENGTH);
+        if (strlen(str) < 8) {
+          sendErrorShortPassword(str);
           //Serial.println(ERROR_SHORTPASSWORD(str));
         } else {
           //Serial.print(String("Updater password changed to: " + str));
-          if (WiFi.status() != WL_CONNECTED) str.toCharArray(updater_password, str.length() + 1);
+          if (WiFi.status() != WL_CONNECTED) strcpy(updater_password, str);
           writeEEPROMToken(UPDATER_PW_TOKEN_ADDR, str, UPDATER_PW_TOKEN_LENGTH);
           EEPROM.commit();
         }
-      } else if (function3 == SETUP_EEPROM_DISPLAYTEXT) {
+      } else if (getNextTokenStrEquals(currentToken, SETUP_EEPROM_DISPLAYTEXT, true)) {
+        char str[DISPLAYTEXT_TOKEN_LENGTH];
+        getNextTokenStr(str, currentToken, DISPLAYTEXT_TOKEN_LENGTH);
         //Serial.print(String("Display text changed to: " + str));
-        str.toCharArray(display_text, str.length() + 1);
+        strcpy(display_text, str);
         writeEEPROMToken(DISPLAYTEXT_TOKEN_ADDR, str, DISPLAYTEXT_TOKEN_LENGTH);
         EEPROM.commit();
       }
     } else if (function2 == SETUP_RESET) {
-      writeEEPROMToken(START_TOKEN_ADDR, "", START_TOKEN_LENGTH);
+      EEPROM.write(START_TOKEN_ADDR, 0x00);
       EEPROM.commit();
     } else if (function2 == SETUP_REBOOT) {
       ESP.restart();
@@ -417,22 +428,36 @@ void processCommand(String command) {
   } else if (function == HEARTBEAT_FUNCTION) {
     lastHeartbeat = 0;
   } else if (function == MOTOR_FUNCTION) {
-    int motorNum = iGetToken(command);
-    int motorDirection = iGetToken(command);
-    int motorPower = iGetToken(command);
+    int motorNum = getNextTokenInt(currentToken);
+    int motorDirection = getNextTokenInt(currentToken);
+    int motorPower = getNextTokenInt(currentToken);
 
     if (motorNum == MOTOR_LEFT) {
       //Serial.println("Received command for Motor Number 1");
+      /*
+      Serial.print("MOTOR_LEFT(");
+      Serial.print(motorDirection);
+      Serial.print(", ");
+      Serial.print(motorPower);
+      Serial.println(")");
+      */
       leftMotorChanged = true;
       leftMotorDir = motorDirection;
       leftMotorSpeed = motorPower;
     } else if (motorNum == MOTOR_RIGHT) {
       //Serial.println("Received command for Motor Number 2");
+      /*
+      Serial.print("MOTOR_RIGHT(");
+      Serial.print(motorDirection);
+      Serial.print(", ");
+      Serial.print(motorPower);
+      Serial.println(")");
+      */
       rightMotorChanged = true;
       rightMotorDir = motorDirection;
       rightMotorSpeed = motorPower;
     }
-  } else if (function == SERVO_FUNCTION) {
+  }/* else if (function == SERVO_FUNCTION) {
     int servoIndex = iGetToken(command);
     int servoPosition = iGetToken(command);
 
@@ -440,41 +465,14 @@ void processCommand(String command) {
       servo[servoIndex].position = servoPosition;
       servo[servoIndex].changed = true;
     }
+  }*/ else {
+    sendErrorParseError(command);
   }
-}
-
-int readClientRetEOFPos() {
-  //  loop to read multiple
-  while (client.available() > 0) {
-    char c = client.read();
-    if (c > 0) sClientIn += c; else break;
-  }
-
-  int EOFPos = sClientIn.indexOf(char(10));
-  return EOFPos;
-
-  return -1; // if nothing
 }
 
 void checkHeartbeatTimeout() {
-  // Heart Beat - If there are Heart Beat commands sent in the past x milliseconds then turn off all motors
-  if ((lastHeartbeat > HEARTBEAT_TIMEOUT)) {
-    //Serial.print("Heartbeat Lost. Motor shutdown");
-    leftMotorDir = 1;
-    leftMotorSpeed = 0;
-    leftMotorChanged = true;
-
-    rightMotorDir = 1;
-    rightMotorSpeed = 0;
-    rightMotorChanged = true;
-
-    /* this would move the servos
-      for(uint16_t i; i < servoNum; i++) {
-        servo[i].position = 0;
-        servo[i].changed = true;
-      }
-    */
-  }
+  // heartbeat - if there was no heartbeat command sent in the past HEARTBEAT_TIMEOUT milliseconds then 
+  setIsConnected(lastHeartbeat <= HEARTBEAT_TIMEOUT);
 }
 
 void checkLedBlinkTimeout() {
@@ -485,74 +483,106 @@ void checkLedBlinkTimeout() {
   }
 }
 
-void sendError(String errorType) {
-  client.print(REPLY_START + ',' + ERROR_FUNCTION + ',' + errorType + '\n');
+void sendError(const char* errorMessage) {
+  server.beginPacket(server.remoteIP(), server.remotePort());
+  server.write(ERROR_FUNCTION);
+  server.write(',');
+  server.write(errorMessage);
+  server.write('\n');
+  server.endPacket();
+}
+
+void sendErrorShortPassword(const char* password) {
+  server.beginPacket(server.remoteIP(), server.remotePort());
+  server.write(ERROR_FUNCTION);
+  server.write(",Password '");
+  server.write(password);
+  server.write("' too short\n");
+  server.endPacket();
+}
+
+void sendErrorParseError(const char* command) {
+  server.beginPacket(server.remoteIP(), server.remotePort());
+  server.write(ERROR_FUNCTION);
+  server.write(",Parse error: '");
+  server.write(command);
+  server.write("'\n");
+  server.endPacket();
+}
+
+void setIsConnected(bool isConnected) {
+  if (isConnected && !clientConnected) {
+    clientConnected = true;
+    lastCheckmark = 0;
+
+    currentClientIP = server.remoteIP();
+    currentClientPort = server.remotePort();
+  } else if (!isConnected && clientConnected) {
+    clientConnected = false;
+    lastLoadingCircle = 0;
+    
+    currentClientIP = 0;
+    currentClientPort = 0;
+    
+    leftMotorDir = 1;
+    leftMotorSpeed = 0;
+    leftMotorChanged = true;
+
+    rightMotorDir = 1;
+    rightMotorSpeed = 0;
+    rightMotorChanged = true;
+  }
+}
+
+bool getNextPacket(char* buffer, uint16_t maxSize) {
+  int packetSize = server.parsePacket();
+  if (packetSize && packetSize <= maxSize) {
+    int len = server.read(buffer, maxSize);
+    buffer[len] = 0;
+    return true;
+  } else {
+    buffer[0] = 0;
+    return false;
+  }
+}
+
+void doCommand(char* command) {
+  char* endChar = strchr(command, '\n');
+  if (endChar) {
+    server.beginPacket(currentClientIP, currentClientPort);
+    server.write(command);
+    server.endPacket();
+
+    endChar[0] = 0;
+    processCommand(command);
+    command[0] = 0;
+  }
+}
+
+bool isCurrentClient() {
+  return (currentClientIP == server.remoteIP() && currentClientPort == server.remotePort()) || (!currentClientIP && !currentClientPort);
 }
 
 void loop() {
   /*
-    if (WiFi.status() == WL_CONNECTED) {
-      ArduinoOTA.handle();
-      yield();
-    }
+  if (WiFi.status() == WL_CONNECTED) {
+    ArduinoOTA.handle();
+    yield();
+  }
   */
-  command = "";
 
   checkHeartbeatTimeout();
 
   //checkLedBlinkTimeout(); led doesn't look good
 
-  //Serial.println("leftMotorChanged-Send to motor");
   motorDrive(MOTOR_LEFT, leftMotorDir, leftMotorSpeed);
   leftMotorChanged = false;
 
-  //Serial.println("rightMotorChanged-Send to motor");
   motorDrive(MOTOR_RIGHT, rightMotorDir, rightMotorSpeed);
   rightMotorChanged = false;
 
-  if (client) {
-    if (client.connected()) {
-      //if (!clientConnected) Serial.println("Client has connected2");
-      if (!clientConnected) lastCheckmark = 0;
-      clientConnected = true;
-      connecting = false;
-      disconnected = false;
-      int EOFPos = readClientRetEOFPos();
-      if (EOFPos > 0) {  // Check that we have something to process
-        command = sClientIn.substring(0, EOFPos);
-        sClientIn.remove(0, EOFPos + 1);
-        client.print(String(command + '\n'));
-        processCommand(command);
-      }
-    } else {
-      //if (clientConnected) Serial.println("Client has disconnected1");
-      if (clientConnected) lastLoadingCircle = 0;
-      clientConnected = false;
-      connecting = true;
-      disconnected = true;
-      client.stop();
-      client = server.available();
-      if (client && client.connected()) {
-        //Serial.println("Client has connected3");
-        lastCheckmark = 0;
-        clientConnected = true;
-        connecting = false;
-        sClientIn = "";   // a string to hold incoming data
-      }
-    }
-  } else {
-    //if (clientConnected) Serial.println("Client has disconnected2");
-    clientConnected = false;
-    connecting = true;
-    disconnected = false;
-    client = server.available();
-    if (client && client.connected()) {
-      //Serial.println("Client has connected4");
-      lastCheckmark = 0;
-      clientConnected = true;
-      connecting = false;
-      sClientIn = "";   // a string to hold incoming data
-    }
+  if (getNextPacket(serverRx, SERVER_RX_SIZE) && isCurrentClient()) { // check that we have something to process
+    doCommand(serverRx);
   }
 
   yield();
@@ -561,9 +591,10 @@ void loop() {
   display.drawString(getDisplayX(31), getDisplayY(-3), ssid);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(getDisplayX(3), getDisplayY(34), display_text);
-  drawLoadingCircle(32, 25, 13, 2, 10);
-  drawCheckmark(32, 28, 9, 3);
-  drawHeartbeat(46, 46, 15, 2, 2);
+  drawLoadingCircle(32, 24, 11, 2, 10);
+  drawCheckmark(32, 26, 8, 3);
+  //drawHeartbeat(46, 46, 15, 2, 2);
+  if (lastHeartbeat < 25) display.drawRect(getDisplayX(60), getDisplayY(46), 2 , 2);
   drawMotorVisuals();
   display.display();
   yield();
@@ -594,7 +625,6 @@ void WeaponDrive(int servoNum, uint8_t percent) {
   */
 }
 
-//******************   Motor A control   *******************
 void motorDrive(int motorNum, int motorDir, int percent) {
   percent = _min(percent, 100);
 
@@ -640,16 +670,16 @@ void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness,
   uint16_t circumference = getRadians(radius);
   float offset = (length / 2) / ((float)circumference);
   bool endAnimation = false;
-  if (clientConnected || disconnected) {
+  if (clientConnected) {
     temp = lastLoadingCircle / ((float)LOADING_CIRCLE_TIME);
     if (temp > 1) {
       endAnimation = true;
       temp -= 1;
     }
-  } else if (connecting) {
+  } else {
     lastLoadingCircle = (lastLoadingCircle % LOADING_CIRCLE_TIME);
     temp = (lastLoadingCircle % LOADING_CIRCLE_TIME) / ((float)LOADING_CIRCLE_TIME);
-  } else return;
+  }
 
   temp = (temp < .5) ? (exp(temp / LOADING_CIRCLE_CONST)) : ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - exp((1 - temp) / LOADING_CIRCLE_CONST));
   temp = temp / ((exp(.5 / LOADING_CIRCLE_CONST) * 2) - 1);
@@ -663,7 +693,7 @@ void drawLoadingCircle(uint16_t x, uint16_t y, float radius, uint16_t thickness,
 }
 
 void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
-  if (connecting || disconnected) return;
+  if (!clientConnected) return;
   float temp = lastCheckmark / ((float)CHECKMARK_TIME);
   temp = (temp < .5) ? (exp(temp / CHECKMARK_CONST)) : ((exp(.5 / CHECKMARK_CONST) * 2) - exp((1 - temp) / CHECKMARK_CONST));
   temp = (temp / ((exp(.5 / CHECKMARK_CONST) * 2) - 1)) * 2 * size;
@@ -678,9 +708,10 @@ void drawCheckmark(uint16_t x, uint16_t y, uint16_t size, uint16_t thickness) {
     }
   }
 }
-
+/*
 void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t dotSize) {
   uint16_t phaseNum = ((width - (dotSize - 1)) * 2) - 1;
+  //if (clientConnected) lastHeartbeat = lastHeartbeat % HEARTBEAT_TIME;
   float phase = (((lastHeartbeat / (HEARTBEAT_TIME / ((float)phaseNum)))) + dotSize - 1) / ((float)phaseNum);
   phase = (phase < .5) ? (exp(phase / HEARTBEAT_CONST)) : ((exp(.5 / HEARTBEAT_CONST) * 2) - exp((1 - phase) / HEARTBEAT_CONST));
   phase = (((phase / ((exp(.5 / HEARTBEAT_CONST) * 2) - 1))) * phaseNum) + 1;
@@ -691,7 +722,7 @@ void drawHeartbeat(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint
     if (i > phase || i < phase - dotSize) display.drawVerticalLine(getDisplayX(x) + i, getDisplayY(y), height);
   }
 }
-
+*/
 float changeResolution(float input, uint16_t denominator) {
   return floor(input * denominator) / denominator;
 }
