@@ -66,7 +66,7 @@ const uint32_t  UPDATER_PW_TOKEN_ADDR        = UPDATER_SSID_TOKEN_ADDR + UPDATER
 const char      UPDATER_PW_TOKEN_DEFAULT[]   = "projecthup";
 const uint32_t  UPDATER_PW_TOKEN_LENGTH      = 0x020;
 const uint32_t  DISPLAYTEXT_TOKEN_ADDR       = UPDATER_PW_TOKEN_ADDR + UPDATER_PW_TOKEN_LENGTH;
-const char      DISPLAYTEXT_TOKEN_DEFAULT[]   = "";
+const char      DISPLAYTEXT_TOKEN_DEFAULT[]  = "";
 const uint32_t  DISPLAYTEXT_TOKEN_LENGTH     = 0x020;
 const uint32_t  FULL_EEPROM_USE              = DISPLAYTEXT_TOKEN_ADDR + DISPLAYTEXT_TOKEN_LENGTH;
 
@@ -86,8 +86,10 @@ const char SETUP_EEPROM_DISPLAYTEXT[]  = "DISPLAYTEXT";
 #define MOTOR_LEFT                1
 #define MOTOR_RIGHT               2
 #define SERVO_FUNCTION            6
+#define HALT_DISCONNECT_FUNCTION  80
+#define HALT_FUNCTION             81
+#define DISCONNECT_FUNCTION       82
 
-#define REPLY_START               888
 #define ERROR_FUNCTION            1
 
 #define HEARTBEAT_TIMEOUT 3000     // 3 seconds of nothing will stop the motors
@@ -255,7 +257,7 @@ void setup() {
   WiFi.mode(WIFI_AP);
 
   // start the server listening
-  server.begin(23);
+  server.begin(8192);
   // you're connected now, so print out the status:
   /*
     ArduinoOTA.onStart([]() {
@@ -368,8 +370,39 @@ int getNextTokenInt(const char*& str) {
   return result;
 }
 
+void haltMotors() {
+    leftMotorDir = 1;
+    leftMotorSpeed = 0;
+    leftMotorChanged = true;
+
+    rightMotorDir = 1;
+    rightMotorSpeed = 0;
+    rightMotorChanged = true;
+}
+
+void setIsConnected(bool isConnected, bool haltOnDisconnect = true) {
+  if (isConnected && !clientConnected) {
+    Serial.println("connected");
+    clientConnected = true;
+    lastCheckmark = 0;
+
+    currentClientIP = server.remoteIP();
+    currentClientPort = server.remotePort();
+  } else if (!isConnected && clientConnected) {
+    Serial.println("disconnected");
+    clientConnected = false;
+    lastLoadingCircle = 0;
+    
+    currentClientIP = 0;
+    currentClientPort = 0;
+
+    if (haltOnDisconnect) haltMotors();
+  }
+}
+
 void processCommand(const char* command) {
   const char* currentToken = command;
+  nextToken(currentToken);
   int function = getNextTokenInt(currentToken);
   if (function == SETUP_FUNCTION) {
     int function2 =  getNextTokenInt(currentToken);
@@ -457,11 +490,17 @@ void processCommand(const char* command) {
       rightMotorDir = motorDirection;
       rightMotorSpeed = motorPower;
     }
+  } else if (function == HALT_DISCONNECT_FUNCTION) {
+    setIsConnected(false);
+  } else if (function == HALT_FUNCTION) {
+    haltMotors();
+  } else if (function == DISCONNECT_FUNCTION) {
+    setIsConnected(false, false);
   }/* else if (function == SERVO_FUNCTION) {
     int servoIndex = iGetToken(command);
     int servoPosition = iGetToken(command);
 
-    if (servoIndex < servoNum) {
+    if (servoIndex >= 0 && servoIndex < servoNum) {
       servo[servoIndex].position = servoPosition;
       servo[servoIndex].changed = true;
     }
@@ -471,7 +510,7 @@ void processCommand(const char* command) {
 }
 
 void checkHeartbeatTimeout() {
-  // heartbeat - if there was no heartbeat command sent in the past HEARTBEAT_TIMEOUT milliseconds then 
+  // heartbeat - if there was no heartbeat command sent in the past HEARTBEAT_TIMEOUT milliseconds then disconnect
   setIsConnected(lastHeartbeat <= HEARTBEAT_TIMEOUT);
 }
 
@@ -508,30 +547,6 @@ void sendErrorParseError(const char* command) {
   server.write(command);
   server.write("'\n");
   server.endPacket();
-}
-
-void setIsConnected(bool isConnected) {
-  if (isConnected && !clientConnected) {
-    clientConnected = true;
-    lastCheckmark = 0;
-
-    currentClientIP = server.remoteIP();
-    currentClientPort = server.remotePort();
-  } else if (!isConnected && clientConnected) {
-    clientConnected = false;
-    lastLoadingCircle = 0;
-    
-    currentClientIP = 0;
-    currentClientPort = 0;
-    
-    leftMotorDir = 1;
-    leftMotorSpeed = 0;
-    leftMotorChanged = true;
-
-    rightMotorDir = 1;
-    rightMotorSpeed = 0;
-    rightMotorChanged = true;
-  }
 }
 
 bool getNextPacket(char* buffer, uint16_t maxSize) {
@@ -591,8 +606,8 @@ void loop() {
   display.drawString(getDisplayX(31), getDisplayY(-3), ssid);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(getDisplayX(3), getDisplayY(34), display_text);
-  drawLoadingCircle(32, 24, 11, 2, 10);
-  drawCheckmark(32, 26, 8, 3);
+  drawLoadingCircle(32, 23, 11, 2, 10);
+  drawCheckmark(32, 25, 8, 3);
   //drawHeartbeat(46, 46, 15, 2, 2);
   if (lastHeartbeat < 25) display.drawRect(getDisplayX(60), getDisplayY(46), 2 , 2);
   drawMotorVisuals();
